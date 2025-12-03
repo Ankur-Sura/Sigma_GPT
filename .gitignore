@@ -50,4 +50,11 @@ temp/
 
 # Setup scripts (may contain user-specific configs)
 setup.sh
+setup.sh.example
+
+# Documentation with sensitive info (user-specific)
+CONFIGURATION_COMPLETE.md
+SECURITY_ALERT_FIXED.md
+SETUP_MONGODB.md
+SETUP_QDRANT.md
 
