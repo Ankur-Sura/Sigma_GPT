@@ -4,6 +4,10 @@
 .env.*.local
 .env.backup
 *.env.backup
+**/.env.backup
+Backend/.env.backup
+AI/.env.backup
+Frontend/.env.backup
 
 # Dependencies
 node_modules/
@@ -51,10 +55,17 @@ temp/
 # Setup scripts (may contain user-specific configs)
 setup.sh
 setup.sh.example
+verify_setup.sh
 
 # Documentation with sensitive info (user-specific)
 CONFIGURATION_COMPLETE.md
 SECURITY_ALERT_FIXED.md
 SETUP_MONGODB.md
 SETUP_QDRANT.md
+URGENT_SECURITY_ACTION.md
+FINAL_CONFIGURATION_STATUS.md
+RENDER_ENVIRONMENT_VARIABLES.md
+ENVIRONMENT_VARIABLES.md
+DEPLOYMENT.md
+DEPLOYMENT_STEPS_REMAINING.md
 
