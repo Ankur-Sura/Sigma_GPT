@@ -1,0 +1,417 @@
+.chatWindow {
+    background: var(--panel);
+    height: 100vh; /* fill vertical space */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* avoid large gaps between header/content/footer */
+    align-items: stretch;
+    text-align: center; /* center header text */
+    padding: 0 1rem 0.2rem; /* side breathing room with minimal bottom gap */
+    gap: 0.5rem; /* small gap between sections */
+    position: relative; /* for absolute positioning of children */
+}
+
+/* navbar */
+.navbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0.5rem 0.5rem; /* position the header nicely */
+}
+
+.navbar span {
+    margin: 0 1rem;
+    font-weight: 700; /* brand emphasis */
+    letter-spacing: 0.5px; /* slight spacing */
+}
+
+.userIconDiv {
+    margin: 1rem 2rem;
+}
+
+.userIcon {
+    background-color: var(--accent);
+    height: 28px;
+    width: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* chat input */
+.chatInput {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 0.4rem 0 0.4rem; /* tighter spacing around input */
+    gap: 0.4rem; /* small gap between input and hint */
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.15) 100%); /* subtle fade behind input */
+    margin-top: auto; /* Push input to bottom of flex container */
+    flex-shrink: 0; /* Don't shrink the input area */
+}
+
+.inputBox {
+    width: 100%;
+    position: relative;
+    max-width: 1100px;
+    min-height: 72px; /* taller input bar */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px; /* spacing between controls */
+    padding: 10px 12px;
+    background: var(--input-bg); /* translucent input surface */
+    border-radius: 18px; /* rounded input edges */
+    border: 1px solid var(--border); /* outline input */
+    box-shadow: var(--shadow); /* lift input bar */
+}
+
+.inputToolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.iconBtn {
+    width: 44px; /* square icon button */
+    height: 44px; /* square icon button */
+    border-radius: 14px; /* soften icon button edges */
+    border: 1px solid var(--border); /* outline icons */
+    background: transparent; /* keep background clear */
+    color: var(--text); /* icon color per theme */
+    font-size: 16px; /* icon size */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, color 0.2s ease, border 0.2s ease, transform 0.1s ease;
+}
+
+.iconBtn:hover:enabled {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent); /* accent on hover */
+    color: var(--accent); /* accent icon on hover */
+    transform: translateY(-1px);
+}
+
+.iconBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.iconBtn.active {
+    background: rgba(124, 231, 196, 0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+input {
+    width: 100%;
+    border: none;
+    background-color: transparent; /* blend with input bar */
+    padding: 16px 12px; /* comfy text padding */
+    font-size: 1.05rem; /* larger prompt text */
+    color: var(--text); /* themed prompt color */
+    letter-spacing: 0.1px; /* slight tracking */
+}
+
+input::placeholder {
+    color: var(--muted); /* muted placeholder */
+}
+
+input:focus {
+    outline: none;
+}
+
+.rightControls {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* spacing between mic/send */
+}
+
+.micBtn {
+    width: 44px; /* square mic button */
+    height: 44px; /* square mic button */
+}
+
+#submit {
+    cursor: pointer;
+    height: 44px; /* square send button */
+    width: 44px; /* square send button */
+    font-size: 20px; /* icon size send */
+    border-radius: 14px; /* rounded send button */
+    border: 1px solid var(--border); /* outline send */
+    background: var(--accent); /* accent send button */
+    color: #0e1120; /* dark icon on accent */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+#submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3); /* lift on hover */
+}
+
+#submit.stop {
+    background: rgba(255, 99, 99, 0.15);
+    border-color: rgba(255, 99, 99, 0.4); /* warning tone when stopping */
+    color: #ff9b9b; /* warn text */
+}
+
+/* info text removed */
+
+.uploadMenu {
+    position: absolute;
+    bottom: 60px;
+    left: 0;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--card);
+    padding: 12px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 100;
+    backdrop-filter: blur(12px);
+    animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.menuItem {
+    border: none;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 180px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.menuItem i {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+}
+
+/* PDF icon - red accent */
+.menuItem i.fa-file-pdf {
+    color: #ef4444;
+}
+
+/* Image icon - blue accent */
+.menuItem i.fa-image {
+    color: #3b82f6;
+}
+
+.menuItem:hover:enabled {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.menuItem:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.fileChip {
+    align-self: center;
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border); /* outline file chip */
+    border-radius: 14px; /* rounded file chip */
+    color: var(--text);
+    font-weight: 600; /* emphasize filename */
+    box-shadow: var(--shadow); /* depth behind chip */
+}
+
+.chipHint {
+    color: var(--muted); /* muted hint text */
+    font-weight: 500; /* mid weight */
+}
+
+/* 🆕 Stock Mode Chip */
+.stockChip {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.stockChip i {
+    color: #22c55e; /* Green for stock */
+}
+
+/* 🆕 Travel Mode Chip */
+.travelChip {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.travelChip i {
+    color: #3b82f6; /* Blue for travel */
+}
+
+/* 🆕 Solo Trip Chip - Human-in-the-Loop */
+.soloTripChip {
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.1), rgba(139, 69, 19, 0.05));
+    border-color: rgba(139, 69, 19, 0.3);
+}
+
+.soloTripChip i {
+    color: #8B4513; /* Brown/hiking color */
+}
+
+/* 🆕 Thinking Steps UI - Shows LangGraph workflow progress */
+.thinkingSteps {
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 16px;
+    min-width: 280px;
+    max-width: 400px;
+    margin: 8px 0 8px 1.5rem;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.thinkingHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #818cf8; /* Indigo */
+    font-size: 0.9rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+    margin-bottom: 4px;
+}
+
+.thinkingHeader i {
+    font-size: 1rem;
+}
+
+.thinkingStep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.thinkingStep.pending {
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.thinkingStep.in_progress {
+    color: #fbbf24; /* Amber */
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.thinkingStep.complete {
+    color: #22c55e; /* Green */
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.stepIcon {
+    width: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.stepIcon i {
+    font-size: 0.9rem;
+}
+
+.stepLabel {
+    flex: 1;
+}
+
+/* 🆕 Smart AI Intent Chip - Shows detected query intent */
+.smartIntentChip {
+    align-self: flex-start;
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.1));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 20px;
+    color: var(--text);
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin: 8px 0 8px 1.5rem;
+    animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    }
+}
+
+.intentIcon {
+    font-size: 1.2rem;
+}
+
+.intentText {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .smartIntentChip {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.05));
+}
+
+[data-theme="light"] .intentText {
+    color: rgba(0, 0, 0, 0.8);
+}

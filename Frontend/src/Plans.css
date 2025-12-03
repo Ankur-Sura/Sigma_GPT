@@ -1,0 +1,104 @@
+.plansPage {
+  background: linear-gradient(180deg, rgba(124, 231, 196, 0.08) 0%, transparent 26%), var(--panel); /* soft accent wash */
+}
+
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px; /* spacing between plan cards */
+}
+
+.planCard {
+  position: relative;
+  background: var(--card); /* plan surface */
+  border: 1px solid var(--border); /* plan outline */
+  border-radius: 14px; /* rounded plans */
+  padding: 18px; /* card padding */
+  box-shadow: var(--shadow); /* lift plans */
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* spacing inside card */
+  min-height: 240px; /* consistent height */
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.planCard:hover {
+  transform: translateY(-4px); /* lift on hover */
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25); /* deeper hover shadow */
+}
+
+.planCard.popular {
+  border-color: var(--accent); /* highlight featured plan */
+  box-shadow: 0 14px 32px rgba(124, 231, 196, 0.15); /* accent shadow */
+}
+
+.flag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--accent); /* badge background */
+  color: #0d111f; /* badge text */
+  padding: 6px 10px; /* badge padding */
+  border-radius: 999px; /* pill badge */
+  font-weight: 800; /* bold badge */
+  font-size: 12px; /* badge size */
+}
+
+.planTop h3 {
+  margin: 0;
+  font-size: 1.15rem; /* plan name size */
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px; /* space between price/cadence */
+  margin-top: 6px; /* top spacing to price */
+}
+
+.price {
+  font-size: 2rem; /* big price */
+  font-weight: 800; /* bold price */
+}
+
+.cadence {
+  color: var(--muted); /* muted cadence text */
+}
+
+.planCard ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* space between bullet items */
+  color: var(--muted); /* muted feature text */
+}
+
+.planCard li {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* space between check and text */
+  font-weight: 600; /* readable feature weight */
+}
+
+.planCard i {
+  color: var(--accent-strong); /* accent checks */
+}
+
+.planCta {
+  margin-top: auto;
+  background: var(--accent); /* CTA background */
+  color: #0d111f; /* CTA text */
+  border: none;
+  border-radius: 12px; /* rounded CTA */
+  padding: 12px 14px; /* CTA padding */
+  font-weight: 800; /* bold CTA */
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.planCta:hover {
+  transform: translateY(-1px); /* lift CTA */
+  box-shadow: 0 8px 16px rgba(0,0,0,0.25); /* CTA shadow */
+}

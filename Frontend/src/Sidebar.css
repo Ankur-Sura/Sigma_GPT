@@ -1,0 +1,301 @@
+.sidebar {
+    background-color: var(--sidebar); /* sidebar surface */
+    color: var(--muted); /* default sidebar text */
+    height: 100vh; /* full height rail */
+    width: 320px; /* fixed sidebar width */
+    display: flex;
+    flex-direction: column;
+    /* let items stack; history will flex to fill */
+    align-items: stretch;
+    border-right: 1px solid var(--border); /* divide sidebar from chat */
+    box-shadow: var(--shadow); /* lift sidebar */
+    position: sticky; /* stay fixed on scroll */
+    top: 0; /* align stickiness */
+    position: relative; /* anchor absolute dropdown */
+}
+
+.sidebar button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 12px 12px 4px;
+    padding: 12px 14px;
+    border-radius: 12px; /* round new-chat button */
+    background-color: transparent;
+    border: 1px dashed var(--border); /* dashed CTA frame */
+    cursor: pointer;
+    color: var(--text);
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.logo {
+    height: 28px; /* logo size */
+    width: 28px; /* logo size */
+    background-color: #fff; /* logo background */
+    border-radius: 50%; /* circle logo */
+    object-fit: cover;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-text {
+    color: var(--text); /* brand text color */
+    font-weight: 700; /* bold brand */
+    letter-spacing: 0.6px; /* spaced brand */
+}
+
+.sidebar button span {
+    font-size: 18px; /* icon size on CTA */
+}
+
+.sidebar button:hover {
+    background-color: rgba(255, 255, 255, 0.06); /* hover wash */
+    border-color: var(--accent); /* accent on hover */
+}
+
+.history {
+    margin: 6px 10px; /* tighter margin to reduce surrounding gap */
+    padding: 8px; /* reduce internal padding to shrink top/bottom gap */
+    width: calc(100% - 20px); /* align list width with padding */
+    flex: 1 1 auto; /* fill available vertical space */
+    overflow-y: auto; /* scroll thread list */
+    border-radius: 12px; /* rounded container */
+    background: rgba(255, 255, 255, 0.03); /* subtle fill */
+    border: 1px solid var(--border); /* outline history area */
+}
+
+.history li {
+    list-style-type: none;
+    cursor: pointer;
+    padding: 6px 10px; /* slightly more horizontal padding for alignment */
+    margin-bottom: 0.45rem; /* smaller gap between items */
+    font-size: 14px; /* history text size */
+    border: solid 10px transparent; /* space for icons */
+    position: relative;
+    border-radius: 10px; /* rounded item */
+    color: var(--text); /* item text */
+    transition: all 0.2s ease; /* smooth transitions */
+    border-left: 3px solid transparent; /* space for hover indicator */
+}
+
+.historyTitle {
+    display: inline-block;
+    max-width: 220px; /* prevent overflow in list */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history li:hover {
+    background-color: rgba(255, 255, 255, 0.08); /* hover highlight */
+    border-radius: 10px; /* soften hover */
+    border-left: 3px solid var(--accent); /* accent indicator on left */
+    transform: translateX(4px); /* subtle slide effect */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); /* lift effect */
+}
+
+.sign {
+    padding: 12px;
+    margin: 8px 12px 14px;
+    font-size: 14px;
+    text-align: center;
+    border-top: solid 0.25px var(--border); /* divider above settings */
+    cursor: pointer;
+    margin-top: auto; /* push profile row to bottom */
+}
+
+.profileRow {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* space between avatar and name */
+    text-align: left;
+    cursor: pointer; /* make profile row clearly clickable */
+}
+
+.avatar {
+    width: 36px; /* avatar size */
+    height: 36px; /* avatar size */
+    border-radius: 12px; /* rounded avatar */
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong)); /* gradient badge */
+    color: #0c111e; /* dark text on gradient */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800; /* bold initial */
+}
+
+.profileName {
+    color: var(--text); /* profile name color */
+    font-weight: 700; /* bold name */
+}
+
+.fa-trash {
+    opacity: 0;
+    position: absolute;
+    right: 0;
+}
+
+.history li:hover .fa-trash {
+    opacity: 1;
+    color: var(--text);
+}
+
+.fa-trash:hover {
+    color: #f87171 !important; /* warning tone on delete hover */
+}
+
+.edit-icon {
+    opacity: 0;
+    position: absolute;
+    right: 20px;
+}
+
+.history li:hover .edit-icon {
+    opacity: 1;
+    color: var(--text);
+}
+
+.edit-icon:hover {
+    color: var(--accent) !important; /* accent on edit hover */
+}
+
+.highlighted {
+    background-color: rgba(124, 231, 196, 0.12); /* active thread highlight with accent tint */
+    border-radius: 12px; /* rounded active item */
+    border: 1px solid var(--accent); /* accent border on active */
+    border-left: 3px solid var(--accent-strong); /* strong left indicator */
+    box-shadow: 0 0 12px rgba(124, 231, 196, 0.2); /* subtle glow effect */
+}
+
+.highlighted .historyTitle {
+    color: var(--accent); /* accent text for active thread */
+    font-weight: 600; /* slightly bolder */
+}
+
+.aboutDropdown {
+    position: absolute; /* anchor to sidebar for upward opening */
+    bottom: 86px; /* place above profile row */
+    left: 12px;
+    right: 12px;
+    padding: 12px 12px 10px;
+    background: var(--card); /* dropdown panel */
+    border-radius: 12px; /* rounded dropdown */
+    box-shadow: var(--shadow); /* depth on dropdown */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid var(--border); /* outline dropdown */
+}
+
+.aboutHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text); /* header text */
+    font-weight: 700; /* bold header */
+    font-size: 15px; /* header size */
+}
+
+.aboutByline {
+    font-weight: 600; /* emphasize author */
+    color: var(--muted); /* muted author text */
+    font-size: 13px; /* author size */
+}
+
+.aboutItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px; /* item text size */
+    color: var(--text); /* item text color */
+    padding: 10px 8px; /* item padding */
+    border-radius: 10px; /* rounded items */
+    justify-content: space-between; /* space between text and switch */
+    transition: background 0.15s ease;
+}
+
+.aboutItem:hover {
+    background: rgba(255,255,255,0.05); /* hover wash */
+}
+
+.themeCopy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* align labels */
+    gap: 2px; /* tight spacing in labels */
+}
+
+.themeCopy .label {
+    font-weight: 700; /* bold label */
+    color: var(--text); /* label text */
+}
+
+.themeCopy .sub {
+    color: var(--muted); /* muted subtext */
+    font-size: 12px; /* small subtext */
+}
+
+.toggleSwitch {
+    position: relative;
+    width: 64px; /* switch width */
+    height: 32px; /* switch height */
+    display: inline-block;
+}
+
+.toggleSwitch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.sliderSwitch {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.12); /* track base */
+    transition: 0.3s; /* smooth toggle */
+    border-radius: 999px; /* pill shape */
+    border: 1px solid var(--border); /* track outline */
+}
+
+.sliderSwitch:before {
+    position: absolute;
+    content: "";
+    height: 24px; /* knob size */
+    width: 24px; /* knob size */
+    left: 4px; /* knob position */
+    bottom: 3px; /* knob position */
+    background-color: #fff; /* knob color */
+    transition: 0.3s; /* smooth slide */
+    border-radius: 50%; /* circular knob */
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25); /* knob depth */
+}
+
+.toggleSwitch input:checked + .sliderSwitch {
+    background-color: var(--accent); /* accent track on */
+    border-color: var(--accent-strong); /* bold border on */
+}
+
+.toggleSwitch input:checked + .sliderSwitch:before {
+    transform: translateX(30px); /* slide knob to right */
+}
+
+.aboutItem.linkItem {
+    cursor: pointer;
+    justify-content: flex-start; /* align icon/text */
+}
+
+.aboutItem.linkItem i {
+    color: var(--accent); /* accent icon */
+}
+
+.aboutItem.linkItem:hover {
+    background: rgba(124, 231, 196, 0.15); /* accent hover for links */
+}

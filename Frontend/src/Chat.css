@@ -1,0 +1,181 @@
+.chats {
+    width: 100%;
+    max-width: none;
+    flex: 1; /* Take remaining space in flex container */
+    min-height: 0; /* Allow shrinking in flex */
+    overflow-y: auto; /* scroll chat list */
+    padding: 0.5rem 1.5rem 0.75rem; /* minimal top/bottom padding */
+    box-sizing: border-box;
+    gap: 10px;
+}
+
+/* Markdown table styling - clean and aligned */
+.chats table {
+    border-collapse: collapse;
+    width: auto;
+    min-width: 300px;
+    max-width: 100%;
+    margin: 16px 0;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.chats th,
+.chats td {
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.chats thead th {
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.chats tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Cost breakdown table - special styling */
+.chats td:last-child {
+    text-align: right;
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-weight: 500;
+}
+
+/* Total row styling */
+.chats tr:last-child td {
+    font-weight: 700;
+    border-top: 2px solid var(--border);
+}
+
+.userDiv {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 1rem; /* readable user text */
+    line-height: 1.7; /* relaxed line spacing */
+}
+
+
+.gptDiv {
+    text-align: left;
+    font-size: 1.05rem; /* larger assistant text */
+    line-height: 1.8; /* generous spacing for answers */
+    margin-bottom: 12px; /* gap between messages */
+    color: var(--text); /* theme-aware text color */
+    max-width: 840px; /* constrain line length */
+}
+
+.gptDiv img {
+    width: 320px; /* make preview clearer */
+    max-width: 100%;
+    max-height: 420px;
+    border-radius: 12px; /* soften image corners */
+    margin-bottom: 12px; /* space below images */
+    display: block;
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.12); /* subtle frame */
+    padding: 8px; /* inset padding for images */
+    box-shadow: var(--shadow); /* lift the preview */
+}
+
+.boxMessage {
+    background: var(--bubble-assistant);
+    border: 1px solid var(--border); /* outline assistant meta blocks */
+    border-radius: 12px; /* rounded message block */
+    padding: 12px 14px; /* breathing room in message box */
+    display: inline-block;
+}
+.userMessage {
+    background-color: var(--bubble-user);
+    padding: 12px 18px; /* roomy user bubble */
+    border-radius: 14px; /* rounded user bubble */
+    margin-left: 12rem; /* push bubble off edge */
+    max-width: 520px; /* keep width comfortable */
+    width: fit-content;
+    text-align: left;
+    color: var(--text);
+    letter-spacing: 0.1px; /* slight spacing for clarity */
+}
+
+.hljs {
+    border-radius: 14px !important; /* soften code blocks */
+}
+
+pre {
+    white-space: pre-wrap; /* wrap code blocks to fit */
+}
+
+.assistantMessage {
+    background: var(--bubble-assistant);
+    border: 1px solid var(--border); /* outline assistant replies */
+    border-radius: 14px; /* rounded assistant replies for smoother feel */
+    padding: 14px 16px; /* roomy assistant replies for readability */
+    display: inline-block;
+    box-shadow: var(--shadow); /* depth for replies */
+    letter-spacing: 0.1px; /* slight spacing for readability */
+}
+
+.assistantMessage p {
+    margin: 0.4rem 0; /* consistent paragraph spacing */
+}
+
+/* Packing checklist and bullet list styling */
+.assistantMessage ul,
+.assistantMessage ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+    list-style-position: outside;
+}
+
+.assistantMessage li {
+    margin: 0.4rem 0;
+    padding-left: 0.5rem;
+    text-align: left;
+    display: list-item;
+}
+
+/* Task list checkboxes (GitHub Flavored Markdown) */
+.assistantMessage ul.contains-task-list,
+.assistantMessage .task-list-item {
+    list-style: none;
+    padding-left: 0;
+}
+
+.assistantMessage .task-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-left: 0;
+}
+
+.assistantMessage .task-list-item input[type="checkbox"] {
+    margin-top: 0.35rem;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* Ensure checkbox lists align properly */
+.assistantMessage ul:has(.task-list-item) {
+    padding-left: 0;
+}
+
+.assistantMessage code {
+    background: rgba(0, 0, 0, 0.25); /* dim code inline background */
+    padding: 2px 4px; /* cushion inline code */
+    border-radius: 6px; /* rounded inline code edges */
+}
+
+:root[data-theme="light"] .assistantMessage code {
+    background: rgba(0, 0, 0, 0.04); /* soften inline code in light */
+}

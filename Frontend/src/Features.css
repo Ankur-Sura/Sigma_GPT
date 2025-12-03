@@ -1,0 +1,193 @@
+.pageShell {
+  padding: 2.4rem 3rem 2.6rem;
+  color: var(--text);
+  overflow-y: auto;
+  height: 100vh;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 20%), var(--panel);
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 12px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.pageHeader h1 {
+  margin: 6px 0;
+  font-size: 2.4rem;
+  letter-spacing: 0.5px;
+}
+
+.lede {
+  margin: 0;
+  color: var(--muted);
+  max-width: 100%;
+  line-height: 1.6;
+}
+
+/* Header Action Buttons */
+.headerActions {
+  display: flex;
+  gap: 10px;
+}
+
+.actionBtn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.actionBtn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.actionBtn i {
+  font-size: 12px;
+}
+
+/* Grid Layout */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  align-items: start; /* Prevent cards from stretching */
+}
+
+/* Card Styles */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  overflow: hidden;
+  /* Fixed height to prevent grid jumping */
+  height: fit-content;
+  align-self: start;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card.expanded {
+  border-color: var(--accent);
+}
+
+/* Card Header (Always Visible) */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  padding: 16px 18px;
+  gap: 12px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  background: rgba(124, 231, 196, 0.35);
+  color: var(--accent-strong);
+  min-width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.cardHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.2px;
+  flex: 1;
+  color: var(--text);
+}
+
+.toggleIcon {
+  color: var(--muted);
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.card.expanded .toggleIcon {
+  color: var(--accent-strong);
+}
+
+/* Card Content (Expandable) */
+.cardContent {
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.2s ease;
+}
+
+.cardContent.show {
+  max-height: 150px;
+  padding: 0 18px 16px 18px;
+  opacity: 1;
+}
+
+.cardContent.hide {
+  max-height: 0;
+  padding: 0 18px 0 18px;
+  opacity: 0;
+}
+
+.cardContent p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 0.9rem;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Collapsed State */
+.card.collapsed .cardHeader {
+  padding: 14px 18px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .pageShell {
+    padding: 1.5rem;
+  }
+  
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .headerActions {
+    width: 100%;
+  }
+  
+  .actionBtn {
+    flex: 1;
+    justify-content: center;
+  }
+}

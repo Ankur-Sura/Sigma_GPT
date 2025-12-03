@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #0f1115; /* base background for dark theme */
+  --panel: #161922; /* chat surface */
+  --sidebar: #0c0f16; /* left rail */
+  --card: #1c2030; /* cards on feature/plan pages */
+  --border: rgba(255, 255, 255, 0.08); /* subtle strokes */
+  --text: #e9edf5; /* primary text tone */
+  --muted: #aeb6c8; /* secondary text */
+  --accent: #7ce7c4; /* accent buttons/icons */
+  --accent-strong: #4acaa0; /* stronger accent for flags */
+  --bubble-user: #273046; /* user message bubble */
+  --bubble-assistant: #1b202e; /* assistant message bubble */
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.3); /* depth on cards */
+  --input-bg: rgba(255, 255, 255, 0.05); /* input surface */
+  --warning: #f59f0b; /* warn text */
+}
+
+:root[data-theme="light"] {
+  --bg: #f8f2e8; /* cream background */
+  --panel: #fffaf1; /* chat surface light */
+  --sidebar: #f0e6d8; /* light sidebar */
+  --card: #fff5e3; /* cards in light */
+  --border: rgba(0, 0, 0, 0.08); /* light border */
+  --text: #24160f; /* primary text dark */
+  --muted: #6c5748; /* secondary text dark */
+  --accent: #1f8a70; /* green accent light */
+  --accent-strong: #147d60; /* bold accent light */
+  --bubble-user: #e4d6bf; /* user bubble light */
+  --bubble-assistant: #fff1dc; /* assistant bubble light */
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.08); /* light shadow */
+  --input-bg: rgba(0, 0, 0, 0.04); /* light input surface */
+  --warning: #d97706; /* warn light */
+}
+
+* {
+  box-sizing: border-box;
+  font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
