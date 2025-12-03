@@ -48,3 +48,6 @@ tmp/
 temp/
 *.tmp
 
+# Setup scripts (may contain user-specific configs)
+setup.sh
+
