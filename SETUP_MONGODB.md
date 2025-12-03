@@ -1,12 +1,14 @@
 # 🔐 MongoDB Atlas Setup Complete
 
-Your MongoDB Atlas connection string has been configured. Here's how to use it:
+## ✅ MongoDB Connection String Format
 
-## ✅ Your MongoDB Connection String
+Your MongoDB Atlas connection string should follow this format:
 
 ```
-mongodb+srv://ankursura09_db_user:0vKIm6fo7anlwqpc@cluster0.c9iqfea.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0
+mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0
 ```
+
+**⚠️ IMPORTANT:** Replace `YOUR_USERNAME`, `YOUR_PASSWORD`, and `xxxxx` with your actual MongoDB Atlas credentials.
 
 ## 📝 Where to Add This
 
@@ -26,8 +28,8 @@ TZ=UTC
 **File:** `AI/.env`
 
 ```env
-MONGODB_URI=mongodb+srv://ankursura09_db_user:0vKIm6fo7anlwqpc@cluster0.c9iqfea.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0
-MONGO_URI=mongodb+srv://ankursura09_db_user:0vKIm6fo7anlwqpc@cluster0.c9iqfea.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0
+MONGODB_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0
+MONGO_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0
 MONGODB_DB=sigma_gpt
 OPENAI_API_KEY=sk-your-openai-api-key-here
 QDRANT_URL=http://localhost:6333
@@ -40,13 +42,13 @@ When deploying to Render, add this connection string in the **Environment Variab
 
 **Backend Service:**
 - Variable: `MONGODB_URI`
-- Value: `mongodb+srv://ankursura09_db_user:0vKIm6fo7anlwqpc@cluster0.c9iqfea.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0`
+- Value: `mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0`
 
 **AI Service:**
 - Variable: `MONGODB_URI`
-- Value: `mongodb+srv://ankursura09_db_user:0vKIm6fo7anlwqpc@cluster0.c9iqfea.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0`
+- Value: `mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0`
 - Variable: `MONGO_URI`
-- Value: `mongodb+srv://ankursura09_db_user:0vKIm6fo7anlwqpc@cluster0.c9iqfea.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0`
+- Value: `mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0`
 
 ## 🔒 Security Checklist
 

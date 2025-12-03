@@ -18,7 +18,9 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # MongoDB Connection String
-MONGODB_URI="mongodb+srv://ankursura09_db_user:0vKIm6fo7anlwqpc@cluster0.c9iqfea.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0"
+# IMPORTANT: Replace with your own MongoDB Atlas connection string
+# Format: mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
+MONGODB_URI="mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0"
 
 # =============================================================================
 # BACKEND SETUP
