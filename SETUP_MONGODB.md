@@ -17,7 +17,7 @@ mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?r
 **File:** `Backend/.env`
 
 ```env
-MONGODB_URI=mongodb+srv://ankursura09_db_user:0vKIm6fo7anlwqpc@cluster0.c9iqfea.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0
+MONGODB_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/sigma_gpt?retryWrites=true&w=majority&appName=Cluster0
 OPENAI_API_KEY=sk-your-openai-api-key-here
 AI_SERVICE_URL=http://localhost:8000
 TZ=UTC
