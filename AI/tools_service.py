@@ -1260,8 +1260,6 @@ def fix_currency_symbols(text: str) -> str:
     # ==========================================================================
     # PATTERN 3: "INR" followed by number → ₹ + number
     # ==========================================================================
-    # This is safe because "INR" explicitly means Indian Rupees
-    # Examples: "INR 500" → "₹500", "INR500" → "₹500"
     text = re.sub(
         r'\bINR\s*(\d)',
         r'₹\1',
@@ -1270,15 +1268,27 @@ def fix_currency_symbols(text: str) -> str:
     )
     
     # ==========================================================================
-    # ⚠️ NO OTHER PATTERNS! DO NOT ADD ANY "2" → "₹" CONVERSION!
+    # PATTERN 4: Fix OCR misreading ₹ as "7" in currency contexts
     # ==========================================================================
-    # Previous bugs:
-    # - "2 items" became "₹ items" ❌
-    # - "Page 2" became "Page ₹" ❌
-    # - "2024" became "₹024" ❌
-    #
-    # If OCR misreads ₹ as "2", the user will see "2" which is better than
-    # having all their numbers broken!
+    # OCR sometimes reads ₹ as "7". Only fix when clearly currency context.
+    
+    # Pattern 1: "Up to 7396.85" or "limit 7396.85" → "Up to ₹7396.85"
+    # Look for currency context words followed by "7" + number
+    currency_context = r'(?:limit|up to|amount|price|cost|total|balance|pay|paid|fee|charge|debit|upi|autopay|payment)\s+'
+    text = re.sub(
+        rf'({currency_context})7(\d{{1,2}},\d{{2,3}}(?:,\d{{2,3}})*\.\d{{2}})\b',
+        r'\1₹\2',
+        text,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 2: "7,396.85" when preceded by currency keyword (within 20 chars)
+    # More flexible pattern
+    text = re.sub(
+        r'(?i)(?:limit|amount|price|total|balance|pay|fee|charge|debit|upi|autopay).{0,20}?\b7(\d{1,2},\d{2,3}(?:,\d{2,3})*\.\d{2})\b',
+        r'₹\1',
+        text
+    )
     
     return text
 

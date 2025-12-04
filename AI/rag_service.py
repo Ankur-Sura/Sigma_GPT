@@ -364,10 +364,38 @@ def fix_ocr_code_formatting(text: str) -> str:
     text = re.sub(r'\bint([a-z])', r'int \1', text)
     # "voidmain" → "void main"  
     text = re.sub(r'\bvoid([a-z])', r'void \1', text)
-    # "returnroot" → "return root"
-    text = re.sub(r'\breturn([a-z])', r'return \1', text)
+    # "returnroot" → "return root", "return0" → "return 0"
+    text = re.sub(r'\breturn([a-zA-Z0-9])', r'return \1', text)
     # "newNode" → "new Node"
     text = re.sub(r'\bnew([A-Z])', r'new \1', text)
+    
+    # ==========================================================================
+    # Fix method names that got split incorrectly
+    # ==========================================================================
+    
+    # "getMin Node" → "getMinNode" (method name, not two words)
+    text = re.sub(r'\b(getMin|getMax|delete|insert|search|find|remove)\s+Node\b', r'\1Node', text)
+    # "Node T2" → "Node T2" (keep as is - T2 is a variable name)
+    # But "NodeT2" → "Node T2"
+    text = re.sub(r'\bNode([A-Z]\d)', r'Node \1', text)
+    
+    # ==========================================================================
+    # Fix common word concatenations in explanations (BE CAREFUL!)
+    # ==========================================================================
+    
+    # "BSTdeleteisarecursivefunction" → "BST delete is a recursive function"
+    # Only split when word boundaries are clear
+    common_words = ['is', 'are', 'in', 'of', 'the', 'to', 'and', 'or', 'for', 'with', 'from', 'by', 'at', 'on', 'a', 'an']
+    for word in sorted(common_words, key=len, reverse=True):
+        # Only split if word is between lowercase letters (not breaking valid words)
+        # "deleteis" → "delete is" but don't break "this" or "island"
+        text = re.sub(rf'([a-z]{{3,}})({word})([a-z]{{3,}})', rf'\1 \2 \3', text, flags=re.IGNORECASE)
+    
+    # "BalanceFactorinAVLtree" → "Balance Factor in AVL tree"
+    # Split CamelCase: lowercase followed by uppercase
+    text = re.sub(r'([a-z]{2,})([A-Z][a-z]{2,})', r'\1 \2', text)
+    # "AVLtree" → "AVL tree" (all caps followed by lowercase)
+    text = re.sub(r'([A-Z]{2,})([a-z]{2,})', r'\1 \2', text)
     
     # ==========================================================================
     # Fix operators and brackets
