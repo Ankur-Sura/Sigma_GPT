@@ -1433,16 +1433,202 @@ After this, you can call: graph.invoke(state)
 #                     RUN FUNCTION
 # =============================================================================
 
+def detect_query_type(query: str) -> Dict[str, Any]:
+    """
+    📖 Detect Query Type: Company vs Sector
+    =======================================
+    
+    Determines if the query is about:
+    - A specific company (e.g., "Tata Motors stock", "HDFC Bank")
+    - A sector/industry (e.g., "Defence shares", "IT sector", "Banking stocks")
+    
+    Returns:
+    --------
+    {
+        "type": "company" | "sector",
+        "entity": "company name" or "sector name",
+        "confidence": float (0.0 to 1.0)
+    }
+    """
+    query_lower = query.lower()
+    
+    # 🆕 Sector keywords (Indian stock market sectors)
+    sector_keywords = {
+        "defence": ["defence", "defense", "aerospace", "hal", "bel", "bharat electronics", "hindustan aeronautics"],
+        "it": ["it sector", "information technology", "software", "tech sector"],
+        "banking": ["banking", "banks", "financial sector", "finance"],
+        "pharma": ["pharma", "pharmaceutical", "medicine", "drug"],
+        "auto": ["auto", "automobile", "automotive", "car", "vehicle"],
+        "fmcg": ["fmcg", "fast moving", "consumer goods"],
+        "energy": ["energy", "power", "oil", "gas", "renewable"],
+        "real estate": ["real estate", "realty", "construction", "infrastructure"],
+        "telecom": ["telecom", "telecommunication", "telecommunications"],
+        "steel": ["steel", "metal", "iron"],
+        "cement": ["cement", "construction material"]
+    }
+    
+    # 🆕 Specific company indicators (strong signals)
+    company_indicators = [
+        "tata motors", "reliance", "hdfc", "infosys", "tcs", "wipro", 
+        "icici", "sbi", "bajaj", "mahindra", "maruti", "adani",
+        "hindustan aeronautics", "bharat electronics", "hal", "bel",
+        "ntpc", "ongc", "sail", "bhel", "coal india"
+    ]
+    
+    # Check for specific company mentions
+    for company in company_indicators:
+        if company in query_lower:
+            return {
+                "type": "company",
+                "entity": company.title(),
+                "confidence": 0.9
+            }
+    
+    # Check for sector mentions
+    for sector, keywords in sector_keywords.items():
+        for keyword in keywords:
+            if keyword in query_lower:
+                # Check if it's a sector-level question (not a company)
+                sector_patterns = [
+                    f"{keyword} share", f"{keyword} shares", f"{keyword} stock", 
+                    f"{keyword} stocks", f"{keyword} sector", f"{keyword} industry",
+                    f"buy {keyword}", f"invest in {keyword}", f"{keyword} companies"
+                ]
+                for pattern in sector_patterns:
+                    if pattern in query_lower:
+                        return {
+                            "type": "sector",
+                            "entity": sector.title(),
+                            "confidence": 0.85
+                        }
+    
+    # Default: assume company (for backward compatibility)
+    return {
+        "type": "company",
+        "entity": None,
+        "confidence": 0.5
+    }
+
+
+def run_sector_analysis(sector_name: str, query: str) -> Dict[str, Any]:
+    """
+    📖 Run Sector-Level Analysis (Simplified)
+    ==========================================
+    
+    For sector-level queries (e.g., "Defence shares", "IT sector"),
+    provides a simplified analysis without going through full company workflow.
+    
+    This is faster and more appropriate for sector-level questions.
+    """
+    print("\n" + "="*60)
+    print(f"🏭 SECTOR ANALYSIS: {sector_name}")
+    print("="*60)
+    
+    from tools_service import indian_stock_search, smart_web_search
+    from openai import OpenAI
+    client = OpenAI()
+    
+    # Get current date
+    from tools_service import get_current_datetime
+    date_info = get_current_datetime()
+    current_date = date_info.get("formatted", "")
+    
+    # Step 1: Search for sector trends
+    sector_query = f"{sector_name} sector India 2024 trends growth outlook"
+    print(f"🔍 Searching sector trends: {sector_query}")
+    sector_results = smart_web_search(sector_query, max_results=5)
+    
+    # Step 2: Search for top companies in this sector
+    companies_query = f"top {sector_name} companies India NSE BSE listed"
+    print(f"🔍 Searching top companies: {companies_query}")
+    companies_results = smart_web_search(companies_query, max_results=5)
+    
+    # Step 3: Search for sector-specific news
+    news_query = f"{sector_name} sector India latest news 2024"
+    print(f"🔍 Searching sector news: {news_query}")
+    news_results = smart_web_search(news_query, max_results=5)
+    
+    # Step 4: Generate comprehensive sector analysis
+    analysis_prompt = f"""
+    You are a financial analyst specializing in Indian stock markets.
+    
+    User Query: "{query}"
+    Sector: {sector_name}
+    Current Date: {current_date}
+    
+    SECTOR TRENDS:
+    {sector_results.get('results', [])[:3]}
+    
+    TOP COMPANIES IN SECTOR:
+    {companies_results.get('results', [])[:3]}
+    
+    SECTOR NEWS:
+    {news_results.get('results', [])[:3]}
+    
+    Provide a comprehensive analysis covering:
+    1. Sector Overview: Current state and growth prospects
+    2. Key Trends: What's driving the sector
+    3. Top Companies: Major players in this sector
+    4. Investment Outlook: Is this a good sector to invest in?
+    5. Risks: What are the key risks?
+    6. Recommendation: Should someone invest in this sector? Why or why not?
+    
+    Format your response clearly with sections.
+    Always end with: "⚠️ This is not financial advice. Please do your own research before investing."
+    """
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a financial analyst for Indian stock markets."},
+                {"role": "user", "content": analysis_prompt}
+            ],
+            temperature=0.7
+        )
+        
+        analysis = response.choices[0].message.content
+        
+        return {
+            "type": "sector_analysis",
+            "sector": sector_name,
+            "query": query,
+            "sector_analysis": analysis,
+            "sector_trends": sector_results,
+            "top_companies": companies_results,
+            "sector_news": news_results,
+            "final_recommendation": analysis,
+            "steps": [
+                {"step": "sector_trends", "status": "complete"},
+                {"step": "top_companies", "status": "complete"},
+                {"step": "sector_news", "status": "complete"},
+                {"step": "sector_analysis", "status": "complete"}
+            ]
+        }
+    except Exception as e:
+        print(f"❌ Sector analysis failed: {e}")
+        return {
+            "type": "sector_analysis",
+            "sector": sector_name,
+            "query": query,
+            "final_recommendation": f"Analysis for {sector_name} sector is currently unavailable. Please try asking about a specific company.",
+            "error": str(e)
+        }
+
+
 def run_stock_research(query: str, company_name: Optional[str] = None) -> Dict[str, Any]:
     """
-    📖 Run Stock Research
-    =====================
+    📖 Run Stock Research (with Smart Routing)
+    ==========================================
     
     Main function to run the stock research workflow.
+    Now includes smart routing to distinguish between:
+    - Company-specific queries → Full LangGraph workflow
+    - Sector-level queries → Simplified sector analysis
     
     Parameters:
     -----------
-    query: The user's question (e.g., "Tell me about Tata Motors stock")
+    query: The user's question (e.g., "Tell me about Tata Motors stock" or "Defence shares")
     company_name: Optional explicit company name
     
     Returns:
@@ -1451,13 +1637,27 @@ def run_stock_research(query: str, company_name: Optional[str] = None) -> Dict[s
     
     📌 EXAMPLE USAGE:
     ----------------
-    result = run_stock_research("Tell me about Reliance stock")
-    print(result["final_recommendation"])
+    result = run_stock_research("Tell me about Reliance stock")  # Company
+    result = run_stock_research("Should I buy Defence shares?")  # Sector
     """
     print("\n" + "="*60)
-    print("🚀 STARTING LANGGRAPH STOCK RESEARCH WORKFLOW")
+    print("🚀 STARTING STOCK RESEARCH (with Smart Routing)")
     print("="*60)
     print(f"📌 Query: {query}")
+    
+    # 🆕 Step 1: Detect query type (company vs sector)
+    query_type_info = detect_query_type(query)
+    print(f"🎯 Detected Type: {query_type_info['type']} ({query_type_info['entity']})")
+    print(f"   Confidence: {query_type_info['confidence']}")
+    
+    # 🆕 Step 2: Route to appropriate workflow
+    if query_type_info['type'] == 'sector' and query_type_info['confidence'] > 0.7:
+        # Sector-level query → Use simplified sector analysis
+        print("🏭 Routing to Sector Analysis (simplified workflow)")
+        return run_sector_analysis(query_type_info['entity'], query)
+    
+    # Company-specific query → Use full LangGraph workflow
+    print("🏢 Routing to Company Research (full LangGraph workflow)")
     
     # Extract company name from query if not provided
     if not company_name:

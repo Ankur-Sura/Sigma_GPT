@@ -2927,25 +2927,39 @@ def run_smart_chat(
                 "auto_detected": False
             }
         elif force_tool == "stock":
-            # Use LangGraph stock workflow
+            # Use LangGraph stock workflow (with smart routing)
             from stock_graph import run_stock_research
             result = run_stock_research(query)
-            return {
-                "answer": result.get("final_recommendation", "Analysis complete."),
-                "intent": "MANUAL_STOCK",
-                "tool_used": "langgraph_stock_workflow",
-                "auto_detected": False,
-                "sector_analysis": result.get("sector_analysis"),
-                "company_research": result.get("company_research"),
-                "policy_analysis": result.get("policy_analysis"),
-                "final_recommendation": result.get("final_recommendation"),
-                "steps": [
-                    {"step": "sector_analyst", "status": "complete"},
-                    {"step": "company_researcher", "status": "complete"},
-                    {"step": "policy_watchdog", "status": "complete"},
-                    {"step": "final_advisor", "status": "complete"}
-                ]
-            }
+            
+            # Handle both company and sector analysis results
+            if result.get("type") == "sector_analysis":
+                return {
+                    "answer": result.get("final_recommendation", "Analysis complete."),
+                    "intent": "MANUAL_STOCK_SECTOR",
+                    "tool_used": "sector_analysis",
+                    "auto_detected": False,
+                    "sector": result.get("sector"),
+                    "sector_analysis": result.get("sector_analysis"),
+                    "final_recommendation": result.get("final_recommendation"),
+                    "steps": result.get("steps", [])
+                }
+            else:
+                return {
+                    "answer": result.get("final_recommendation", "Analysis complete."),
+                    "intent": "MANUAL_STOCK",
+                    "tool_used": "langgraph_stock_workflow",
+                    "auto_detected": False,
+                    "sector_analysis": result.get("sector_analysis"),
+                    "company_research": result.get("company_research"),
+                    "policy_analysis": result.get("policy_analysis"),
+                    "final_recommendation": result.get("final_recommendation"),
+                    "steps": [
+                        {"step": "sector_analyst", "status": "complete"},
+                        {"step": "company_researcher", "status": "complete"},
+                        {"step": "policy_watchdog", "status": "complete"},
+                        {"step": "final_advisor", "status": "complete"}
+                    ]
+                }
     
     # Step 2: Detect intent automatically
     # -----------------------------------
@@ -3032,7 +3046,7 @@ def run_smart_chat(
     # -----------------------------
     
     if intent == "STOCK":
-        print("📈 Routing to Stock Research (LangGraph)")
+        print("📈 Routing to Stock Research (with Smart Routing)")
         from stock_graph import run_stock_research
         result = run_stock_research(query)
         final_answer = result.get("final_recommendation", "Analysis complete.")
@@ -3040,22 +3054,35 @@ def run_smart_chat(
         # 🆕 SAVE TO CHECKPOINTER so follow-ups have context!
         _save_to_thread_checkpointer(thread_id, query, final_answer)
         
-        return {
-            "answer": final_answer,
-            "intent": "STOCK",
-            "tool_used": "langgraph_stock_workflow",
-            "auto_detected": True,
-            "sector_analysis": result.get("sector_analysis"),
-            "company_research": result.get("company_research"),
-            "policy_analysis": result.get("policy_analysis"),
-            "final_recommendation": result.get("final_recommendation"),
-            "steps": [
-                {"step": "sector_analyst", "status": "complete"},
-                {"step": "company_researcher", "status": "complete"},
-                {"step": "policy_watchdog", "status": "complete"},
-                {"step": "final_advisor", "status": "complete"}
-            ]
-        }
+        # Handle both company and sector analysis results
+        if result.get("type") == "sector_analysis":
+            return {
+                "answer": final_answer,
+                "intent": "STOCK_SECTOR",
+                "tool_used": "sector_analysis",
+                "auto_detected": True,
+                "sector": result.get("sector"),
+                "sector_analysis": result.get("sector_analysis"),
+                "final_recommendation": final_answer,
+                "steps": result.get("steps", [])
+            }
+        else:
+            return {
+                "answer": final_answer,
+                "intent": "STOCK",
+                "tool_used": "langgraph_stock_workflow",
+                "auto_detected": True,
+                "sector_analysis": result.get("sector_analysis"),
+                "company_research": result.get("company_research"),
+                "policy_analysis": result.get("policy_analysis"),
+                "final_recommendation": final_answer,
+                "steps": [
+                    {"step": "sector_analyst", "status": "complete"},
+                    {"step": "company_researcher", "status": "complete"},
+                    {"step": "policy_watchdog", "status": "complete"},
+                    {"step": "final_advisor", "status": "complete"}
+                ]
+            }
     
     elif intent == "TRAVEL":
         print("🧳 Routing to Travel Planner (LangGraph)")
