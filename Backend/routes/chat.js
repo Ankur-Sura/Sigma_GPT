@@ -95,9 +95,8 @@ router.post("/test", async(req, res) => {
 
 router.get("/thread", async(req, res) => {
     try {
-        // 🆕 Filter threads by user_id for isolation
-        const user_id = req.query.user_id || "default";
-        const threads = await Thread.find({user_id: user_id}).sort({updatedAt: -1});
+        // Get all threads (shared history for now)
+        const threads = await Thread.find({}).sort({updatedAt: -1});
         // 📖 Thread.find({}) → Get all documents
         // 📖 .sort({updatedAt: -1}) → Sort descending (newest first)
         // 📌 -1 = descending, 1 = ascending
@@ -190,7 +189,6 @@ router.get("/thread", async(req, res) => {
 
 router.get("/thread/:threadId", async(req, res) => {
     const {threadId} = req.params;
-    const user_id = req.query.user_id || "default";  // 🆕 Get user_id for isolation
     // 📖 Destructure threadId from URL parameters
     // URL: /api/thread/abc123 → threadId = "abc123"
 
@@ -219,8 +217,7 @@ router.get("/thread/:threadId", async(req, res) => {
     // 📌 20 is a good default: not too few, not too many
 
     try {
-        const user_id = req.query.user_id || "default";
-        const thread = await Thread.findOne({threadId, user_id: user_id});
+        const thread = await Thread.findOne({threadId});
         // 📖 findOne() returns the first matching document
         // 📌 Different from find() which returns an array
 
@@ -353,10 +350,9 @@ router.get("/thread/:threadId", async(req, res) => {
 
 router.delete("/thread/:threadId", async (req, res) => {
     const {threadId} = req.params;
-    const user_id = req.query.user_id || "default";
 
     try {
-        const deletedThread = await Thread.findOneAndDelete({threadId, user_id: user_id});
+        const deletedThread = await Thread.findOneAndDelete({threadId});
         // 📖 findOneAndDelete() finds and removes in one operation
         // Returns the deleted document (or null if not found)
 
@@ -392,7 +388,6 @@ router.delete("/thread/:threadId", async (req, res) => {
 
 router.patch("/thread/:threadId", async (req, res) => {
     const {threadId} = req.params;
-    const user_id = req.query.user_id || "default";
     const {title} = req.body || {};
 
     if(!title) {
@@ -402,7 +397,7 @@ router.patch("/thread/:threadId", async (req, res) => {
 
     try {
         const updated = await Thread.findOneAndUpdate(
-            {threadId, user_id: user_id},                        // 📖 Filter: which document to update
+            {threadId},                        // 📖 Filter: which document to update
             {title, updatedAt: new Date()},    // 📖 Update: new values
             {new: true}                        // 📖 Option: return updated doc (not original)
         );
@@ -442,8 +437,7 @@ router.patch("/thread/:threadId", async (req, res) => {
  */
 
 router.post("/chat", async(req, res) => {
-    const {threadId, message, user_id} = req.body;
-    const userId = user_id || "default";  // 🆕 Get user_id for isolation
+    const {threadId, message} = req.body;
     // 📖 Destructure from request body
     // threadId: UUID for this conversation
     // message: User's message text
@@ -457,10 +451,10 @@ router.post("/chat", async(req, res) => {
         // =================================================================
         // STEP 1: Load or Create Thread
         // =================================================================
-        let thread = await Thread.findOne({threadId, user_id: userId});
-        // 📖 Try to find existing thread (filtered by user_id)
+        let thread = await Thread.findOne({threadId});
+        // 📖 Try to find existing thread
 
-        const globalThreadId = `global-shared-${userId}`;
+        const globalThreadId = "global-shared";
         let globalThread = await Thread.findOne({threadId: globalThreadId});
         // 📖 Global thread stores memory shared across ALL threads
         // 📌 This is like ChatGPT's "Memory" feature!
@@ -469,7 +463,6 @@ router.post("/chat", async(req, res) => {
             // Create new thread if first message
             thread = new Thread({
                 threadId,
-                user_id: userId,  // 🆕 Associate thread with user
                 title: message,  // 📖 First message becomes thread title
                 messages: [{role: "user", content: message}]
             });

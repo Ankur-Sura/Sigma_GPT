@@ -57,8 +57,7 @@ function Sidebar() {
         allThreads, setAllThreads, 
         currThreadId, setCurrThreadId,
         setNewChat, setPrompt, setReply, setPrevChats, 
-        theme, setTheme,
-        userId
+        theme, setTheme
     } = useContext(MyContext);
     // 📖 Destructure all needed state from context
     
@@ -95,10 +94,10 @@ function Sidebar() {
      */
 
     const getAllThreads = async () => {
-        // 📖 Fetch all chat threads from backend (filtered by user_id)
+        // 📖 Fetch all chat threads from backend
         try {
-            console.log(`🔍 Fetching threads from: ${API_URL}/api/thread?user_id=${userId || "default"}`);
-            const response = await fetch(`${API_URL}/api/thread?user_id=${encodeURIComponent(userId || "default")}`);
+            console.log(`🔍 Fetching threads from: ${API_URL}/api/thread`);
+            const response = await fetch(`${API_URL}/api/thread`);
             
             if (!response.ok) {
                 console.error(`❌ Failed to fetch threads: ${response.status} ${response.statusText}`);
@@ -153,7 +152,7 @@ function Sidebar() {
 
         try {
             // Fetch ALL messages for this thread (simple, no pagination)
-            const response = await fetch(`${API_URL}/api/thread/${newThreadId}?user_id=${encodeURIComponent(userId || "default")}`);
+            const response = await fetch(`${API_URL}/api/thread/${newThreadId}`);
             const res = await response.json();
             
             // Handle both formats: array (old) or object with messages (new)
@@ -172,7 +171,7 @@ function Sidebar() {
     const deleteThread = async (threadId) => {
         // 📖 Delete a chat thread
         try {
-            const response = await fetch(`${API_URL}/api/thread/${threadId}?user_id=${encodeURIComponent(userId || "default")}`, {method: "DELETE"});
+            const response = await fetch(`${API_URL}/api/thread/${threadId}`, {method: "DELETE"});
             const res = await response.json();
             console.log(res);
 
@@ -261,7 +260,7 @@ function Sidebar() {
                                     e.stopPropagation();
                                     const newName = prompt("Rename chat", thread.title || "Untitled");
                                     if(!newName) return;
-                                    fetch(`${API_URL}/api/thread/${thread.threadId}?user_id=${encodeURIComponent(userId || "default")}`, {
+                                    fetch(`${API_URL}/api/thread/${thread.threadId}`, {
                                         method: "PATCH",
                                         headers: {"Content-Type": "application/json"},
                                         body: JSON.stringify({title: newName})

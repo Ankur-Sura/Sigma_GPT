@@ -502,7 +502,7 @@ def _save_rag_conversation(thread_id: str, pdf_id: str, question: str, answer: s
         ]
     }
     """
-    if not _rag_checkpoints:
+    if _rag_checkpoints is None:
         print("⚠️ RAG Checkpointer not available, skipping save")
         return
     
@@ -549,7 +549,7 @@ def _get_rag_conversation_history(thread_id: str) -> list:
     --------
     List of message dicts: [{"role": "user", "content": "..."}, ...]
     """
-    if not _rag_checkpoints:
+    if _rag_checkpoints is None:
         return []
     
     try:

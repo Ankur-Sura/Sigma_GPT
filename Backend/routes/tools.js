@@ -839,14 +839,11 @@ router.post("/smart-chat", async (req, res) => {
         // Persist Smart Chat Result to MongoDB
         // =================================================================
         const threadIdToUse = thread_id || "default";
-        const userIdToUse = user_id || "default";
         
-        // 🆕 Find thread by BOTH threadId AND user_id for proper isolation
-        let thread = await Thread.findOne({threadId: threadIdToUse, user_id: userIdToUse});
+        let thread = await Thread.findOne({threadId: threadIdToUse});
         if(!thread) {
             thread = new Thread({
                 threadId: threadIdToUse,
-                user_id: userIdToUse,  // 🆕 Include user_id when creating thread
                 title: query,
                 messages: []
             });
