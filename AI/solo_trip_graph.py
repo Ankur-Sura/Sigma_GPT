@@ -56,6 +56,25 @@ from tools_service import smart_web_search, search_news, get_current_datetime
 client = OpenAI()
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 
+
+def _sanitize_mongo_uri(uri: str) -> str:
+    """
+    📖 Sanitize MongoDB URI
+    -----------------------
+    Removes any whitespace and validates the URI format.
+    pymongo is strict about URI format, so we clean it up.
+    """
+    if not uri:
+        return uri
+    # Remove leading/trailing whitespace
+    uri = uri.strip()
+    # Remove any quotes that might have been added
+    if uri.startswith('"') and uri.endswith('"'):
+        uri = uri[1:-1]
+    if uri.startswith("'") and uri.endswith("'"):
+        uri = uri[1:-1]
+    return uri
+
 # =============================================================================
 #                           STATE DEFINITION
 # =============================================================================
@@ -892,7 +911,9 @@ def start_solo_trip(query: str, thread_id: str = "solo_trip_1") -> Dict[str, Any
     """
     config = {"configurable": {"thread_id": thread_id}}
     
-    with MongoDBSaver.from_conn_string(MONGODB_URI) as checkpointer:
+    # Sanitize URI to ensure proper format
+    sanitized_uri = _sanitize_mongo_uri(MONGODB_URI)
+    with MongoDBSaver.from_conn_string(sanitized_uri) as checkpointer:
         graph = create_solo_trip_graph_with_checkpointer(checkpointer)
         
         initial_state = {
@@ -929,7 +950,9 @@ def resume_solo_trip(thread_id: str, human_response: Dict) -> Dict[str, Any]:
     """
     config = {"configurable": {"thread_id": thread_id}}
     
-    with MongoDBSaver.from_conn_string(MONGODB_URI) as checkpointer:
+    # Sanitize URI to ensure proper format
+    sanitized_uri = _sanitize_mongo_uri(MONGODB_URI)
+    with MongoDBSaver.from_conn_string(sanitized_uri) as checkpointer:
         graph = create_solo_trip_graph_with_checkpointer(checkpointer)
         
         # Resume with human response

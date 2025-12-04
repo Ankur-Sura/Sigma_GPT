@@ -588,7 +588,9 @@ Think of it like a "save game" feature:
 🔗 In your notes (07-LangGraph/graph.py), you used:
     from langgraph.checkpoint.mongodb import MongoDBSaver
     
-    with MongoDBSaver.from_conn_string(DB_URI) as mongo_checkpointer:
+    # Sanitize URI to ensure proper format
+    sanitized_uri = _sanitize_mongo_uri(MONGODB_URI)
+    with MongoDBSaver.from_conn_string(sanitized_uri) as mongo_checkpointer:
         graph_with_mongo = compile_graph_with_checkpointer(mongo_checkpointer)
         
 We're implementing the SAME concept here!
@@ -619,6 +621,25 @@ _checkpoints_collection = None
 _global_memory_collection = None
 
 
+def _sanitize_mongo_uri(uri: str) -> str:
+    """
+    📖 Sanitize MongoDB URI
+    -----------------------
+    Removes any whitespace and validates the URI format.
+    pymongo is strict about URI format, so we clean it up.
+    """
+    if not uri:
+        return uri
+    # Remove leading/trailing whitespace
+    uri = uri.strip()
+    # Remove any quotes that might have been added
+    if uri.startswith('"') and uri.endswith('"'):
+        uri = uri[1:-1]
+    if uri.startswith("'") and uri.endswith("'"):
+        uri = uri[1:-1]
+    return uri
+
+
 def _get_mongo_collection():
     """
     📖 Get MongoDB Collection (Lazy Initialization)
@@ -637,7 +658,11 @@ def _get_mongo_collection():
     
     if _checkpoints_collection is None:
         try:
-            _mongo_client = MongoClient(MONGODB_URI)
+            # Sanitize URI to ensure proper format
+            sanitized_uri = _sanitize_mongo_uri(MONGODB_URI)
+            _mongo_client = MongoClient(sanitized_uri, serverSelectionTimeoutMS=5000)
+            # Test connection immediately
+            _mongo_client.admin.command('ping')
             _mongo_db = _mongo_client[MONGODB_DB]
             _checkpoints_collection = _mongo_db[MONGODB_COLLECTION]
             
@@ -646,6 +671,7 @@ def _get_mongo_collection():
             print(f"✅ Connected to MongoDB checkpointer: {MONGODB_DB}.{MONGODB_COLLECTION}")
         except Exception as e:
             print(f"⚠️ MongoDB checkpointer not available: {e}")
+            print(f"   URI used: {MONGODB_URI[:50]}..." if len(MONGODB_URI) > 50 else f"   URI used: {MONGODB_URI}")
             return None
     
     return _checkpoints_collection
@@ -665,7 +691,11 @@ def _get_global_memory_collection():
     if _global_memory_collection is None:
         try:
             if _mongo_client is None:
-                _mongo_client = MongoClient(MONGODB_URI)
+                # Sanitize URI to ensure proper format
+                sanitized_uri = _sanitize_mongo_uri(MONGODB_URI)
+                _mongo_client = MongoClient(sanitized_uri, serverSelectionTimeoutMS=5000)
+                # Test connection immediately
+                _mongo_client.admin.command('ping')
                 _mongo_db = _mongo_client[MONGODB_DB]
             
             _global_memory_collection = _mongo_db[MONGODB_GLOBAL_MEMORY_COLLECTION]
@@ -673,6 +703,7 @@ def _get_global_memory_collection():
             print(f"✅ Connected to Global Memory: {MONGODB_DB}.{MONGODB_GLOBAL_MEMORY_COLLECTION}")
         except Exception as e:
             print(f"⚠️ Global memory not available: {e}")
+            print(f"   URI used: {MONGODB_URI[:50]}..." if len(MONGODB_URI) > 50 else f"   URI used: {MONGODB_URI}")
             return None
     
     return _global_memory_collection
@@ -1163,7 +1194,11 @@ def _get_global_memory_collection():
     
     if _global_memory_collection is None:
         try:
-            client = MongoClient(MONGODB_URI)
+            # Sanitize URI to ensure proper format
+            sanitized_uri = _sanitize_mongo_uri(MONGODB_URI)
+            client = MongoClient(sanitized_uri, serverSelectionTimeoutMS=5000)
+            # Test connection immediately
+            client.admin.command('ping')
             db = client[MONGODB_DB]
             _global_memory_collection = db[GLOBAL_MEMORY_COLLECTION]
             _global_memory_collection.create_index("user_id", unique=True)
@@ -1369,7 +1404,9 @@ def run_chat_with_memory(
     🔗 YOUR NOTES:
         config = {"configurable": {"thread_id": "1"}}
         
-        with MongoDBSaver.from_conn_string(DB_URI) as mongo_checkpointer:
+        # Sanitize URI to ensure proper format
+    sanitized_uri = _sanitize_mongo_uri(MONGODB_URI)
+    with MongoDBSaver.from_conn_string(sanitized_uri) as mongo_checkpointer:
             graph_with_mongo = compile_graph_with_checkpointer(mongo_checkpointer)
             result = graph_with_mongo.invoke({"messages": [...]}, config)
     
@@ -3198,7 +3235,9 @@ def _save_to_thread_checkpointer(thread_id: str, query: str, answer: str):
     This is similar to LangGraph's checkpointing concept!
     
     YOUR NOTES:
-        with MongoDBSaver.from_conn_string(DB_URI) as mongo_checkpointer:
+        # Sanitize URI to ensure proper format
+    sanitized_uri = _sanitize_mongo_uri(MONGODB_URI)
+    with MongoDBSaver.from_conn_string(sanitized_uri) as mongo_checkpointer:
             graph_with_mongo = compile_graph_with_checkpointer(mongo_checkpointer)
             result = graph_with_mongo.invoke({"messages": [...]}, config)
     

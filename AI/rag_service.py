@@ -406,15 +406,44 @@ an initial question."
 """
 
 # MongoDB connection for RAG checkpointing
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI", os.getenv("MONGODB_URI", "mongodb://localhost:27017"))
+"""
+📖 MongoDB URI for RAG Checkpointing
+------------------------------------
+Uses MONGO_URI if set, otherwise falls back to MONGODB_URI.
+This allows using the same MongoDB connection string for all features.
+"""
+
+def _sanitize_mongo_uri(uri: str) -> str:
+    """
+    📖 Sanitize MongoDB URI
+    -----------------------
+    Removes any whitespace and validates the URI format.
+    pymongo is strict about URI format, so we clean it up.
+    """
+    if not uri:
+        return uri
+    # Remove leading/trailing whitespace
+    uri = uri.strip()
+    # Remove any quotes that might have been added
+    if uri.startswith('"') and uri.endswith('"'):
+        uri = uri[1:-1]
+    if uri.startswith("'") and uri.endswith("'"):
+        uri = uri[1:-1]
+    return uri
 
 try:
-    _rag_mongo_client = MongoClient(MONGO_URI)
+    # Sanitize URI to ensure proper format
+    sanitized_uri = _sanitize_mongo_uri(MONGO_URI)
+    _rag_mongo_client = MongoClient(sanitized_uri, serverSelectionTimeoutMS=5000)
+    # Test connection immediately
+    _rag_mongo_client.admin.command('ping')
     _rag_db = _rag_mongo_client["sigma_gpt_db"]
     _rag_checkpoints = _rag_db["rag_checkpoints"]  # Separate collection for RAG
     print("✅ RAG Checkpointer: Connected to MongoDB")
 except Exception as e:
     print(f"⚠️ RAG Checkpointer: MongoDB connection failed: {e}")
+    print(f"   URI used: {MONGO_URI[:50]}..." if len(MONGO_URI) > 50 else f"   URI used: {MONGO_URI}")
     _rag_checkpoints = None
 
 
