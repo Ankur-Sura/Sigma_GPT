@@ -105,6 +105,13 @@ const ThreadSchema = new mongoose.Schema({
         // 📖 unique: Creates index, prevents duplicates
         // 📌 MongoDB will reject duplicate threadId
     },
+    user_id: {
+        type: String,
+        default: "default",
+        index: true
+        // 🆕 User ID for isolation (unique per browser/session)
+        // 📌 index: true for faster queries when filtering by user_id
+    },
     title: {
         type: String,
         default: "New Chat"

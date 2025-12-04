@@ -7,7 +7,7 @@ import TripPreferencesModal from "./TripPreferencesModal.jsx";
 import { API_URL } from "./config.js";
 
 function ChatWindow() {
-    const {prompt, setPrompt, reply, setReply, currThreadId, setPrevChats, setNewChat} = useContext(MyContext);
+    const {prompt, setPrompt, reply, setReply, currThreadId, setPrevChats, setNewChat, userId} = useContext(MyContext);
     const [loading, setLoading] = useState(false);
 
     // Feature buttons
@@ -187,7 +187,7 @@ function ChatWindow() {
                 body: JSON.stringify({
                     query: queryText,
                     thread_id: currThreadId,
-                    user_id: "default"
+                    user_id: userId || "default"
                 }),
                 signal: controller.signal
             });
@@ -913,7 +913,8 @@ function ChatWindow() {
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
                     query: queryText,
-                    thread_id: currThreadId  // 🆕 Save to this thread
+                    thread_id: currThreadId,  // 🆕 Save to this thread
+                    user_id: userId || "default"  // 🆕 User isolation
                 })
             });
             

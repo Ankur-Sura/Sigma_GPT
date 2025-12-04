@@ -128,6 +128,20 @@ function App() {
     // 📖 Persist theme preference in localStorage
   });
 
+  // 🆕 USER ID for isolation (unique per browser)
+  const [userId, setUserId] = useState(() => {
+    // 📖 Generate unique user_id per browser session
+    // 📌 WHY? Each user gets their own chat history and global memory
+    if (typeof window === "undefined") return "default";
+    let storedUserId = localStorage.getItem("sigma_gpt_user_id");
+    if (!storedUserId) {
+      // Generate new user_id if doesn't exist
+      storedUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem("sigma_gpt_user_id", storedUserId);
+    }
+    return storedUserId;
+  });
+
 
   // ===========================================================================
   // EFFECTS (Side Effects)
@@ -147,6 +161,7 @@ function App() {
 
   // ===========================================================================
   // CONTEXT VALUE
+  // 📖 All values provided to child components via Context
   // ===========================================================================
   
   const providerValues = {
@@ -156,7 +171,8 @@ function App() {
     newChat, setNewChat,
     prevChats, setPrevChats,
     allThreads, setAllThreads,
-    theme, setTheme
+    theme, setTheme,
+    userId  // 🆕 User ID for isolation (unique per browser)
   };
   // 📖 All state and setters bundled for Context
   // 📌 Any child component can access these via useContext(MyContext)

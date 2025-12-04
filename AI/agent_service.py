@@ -2326,10 +2326,10 @@ def start_solo_trip_endpoint(payload: Dict[str, Any]):
             "message": result.get("message"),
             # If interrupted, send the questions
             "questions": result.get("interrupt_data", {}).get("human_questions") if result.get("status") == "awaiting_input" else None,
-            # Initial research data
-            "origin": result.get("interrupt_data", {}).get("origin") if result.get("status") == "awaiting_input" else None,
-            "destination": result.get("interrupt_data", {}).get("destination") if result.get("status") == "awaiting_input" else None,
-            "distance_km": result.get("interrupt_data", {}).get("distance_km") if result.get("status") == "awaiting_input" else None,
+            # Initial research data - extract from state properly
+            "origin": (result.get("interrupt_data", {}) or {}).get("origin") if result.get("status") == "awaiting_input" else None,
+            "destination": (result.get("interrupt_data", {}) or {}).get("destination") if result.get("status") == "awaiting_input" else None,
+            "distance_km": (result.get("interrupt_data", {}) or {}).get("distance_km") if result.get("status") == "awaiting_input" else None,
             "destination_info": result.get("interrupt_data", {}).get("destination_info") if result.get("status") == "awaiting_input" else None,
             "transport_options": result.get("interrupt_data", {}).get("transport_options") if result.get("status") == "awaiting_input" else None,
             # If already complete (unlikely on start)

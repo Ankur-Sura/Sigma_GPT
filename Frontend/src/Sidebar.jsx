@@ -57,7 +57,8 @@ function Sidebar() {
         allThreads, setAllThreads, 
         currThreadId, setCurrThreadId,
         setNewChat, setPrompt, setReply, setPrevChats, 
-        theme, setTheme
+        theme, setTheme,
+        userId
     } = useContext(MyContext);
     // 📖 Destructure all needed state from context
     
@@ -91,9 +92,9 @@ function Sidebar() {
      */
 
     const getAllThreads = async () => {
-        // 📖 Fetch all chat threads from backend
+        // 📖 Fetch all chat threads from backend (filtered by user_id)
         try {
-            const response = await fetch(`${API_URL}/api/thread`);
+            const response = await fetch(`${API_URL}/api/thread?user_id=${encodeURIComponent(userId || "default")}`);
             const res = await response.json();
             
             const filteredData = res
@@ -157,7 +158,7 @@ function Sidebar() {
     const deleteThread = async (threadId) => {
         // 📖 Delete a chat thread
         try {
-            const response = await fetch(`${API_URL}/api/thread/${threadId}`, {method: "DELETE"});
+            const response = await fetch(`${API_URL}/api/thread/${threadId}?user_id=${encodeURIComponent(userId || "default")}`, {method: "DELETE"});
             const res = await response.json();
             console.log(res);
 
@@ -207,7 +208,7 @@ function Sidebar() {
                                     e.stopPropagation();
                                     const newName = prompt("Rename chat", thread.title || "Untitled");
                                     if(!newName) return;
-                                    fetch(`${API_URL}/api/thread/${thread.threadId}`, {
+                                    fetch(`${API_URL}/api/thread/${thread.threadId}?user_id=${encodeURIComponent(userId || "default")}`, {
                                         method: "PATCH",
                                         headers: {"Content-Type": "application/json"},
                                         body: JSON.stringify({title: newName})
