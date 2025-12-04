@@ -26,6 +26,7 @@
  */
 
 import "./Sidebar.css";
+import logoImage from "./assets/blacklogo.png";
 // 📖 Component-specific styles
 
 import { useContext, useEffect, useState } from "react";
@@ -176,7 +177,7 @@ function Sidebar() {
         <section className="sidebar">
             <button onClick={createNewChat}>
                 <div className="brand">
-                    <img src="src/assets/blacklogo.png" alt="gpt logo" className="logo"></img>
+                    <img src={logoImage} alt="gpt logo" className="logo"></img>
                     <span className="brand-text">Sigma GPT</span>
                 </div>
                 <span><i className="fa-solid fa-pen-to-square"></i></span>
