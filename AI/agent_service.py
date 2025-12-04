@@ -689,7 +689,10 @@ def _get_mongo_collection():
         except Exception as e:
             print(f"⚠️ MongoDB checkpointer not available: {e}")
             print(f"   Raw URI from env: {MONGODB_URI[:80]}..." if len(MONGODB_URI) > 80 else f"   Raw URI from env: {MONGODB_URI}")
-            print(f"   URI length: {len(MONGODB_URI)} characters")
+            print(f"   URI length: {len(MONGODB_URI)} characters (should be ~130-140)")
+            if len(MONGODB_URI) < 130:
+                print(f"   ⚠️  URI appears incomplete - missing query parameters!")
+                print(f"   Expected: ...sigma_gpt?retryWrites=true&w=majority&appName=Cluster0")
             print(f"   Check Render Dashboard → Environment → MONGODB_URI")
             return None
     
@@ -723,7 +726,10 @@ def _get_global_memory_collection():
         except Exception as e:
             print(f"⚠️ Global memory not available: {e}")
             print(f"   Raw URI from env: {MONGODB_URI[:80]}..." if len(MONGODB_URI) > 80 else f"   Raw URI from env: {MONGODB_URI}")
-            print(f"   URI length: {len(MONGODB_URI)} characters")
+            print(f"   URI length: {len(MONGODB_URI)} characters (should be ~130-140)")
+            if len(MONGODB_URI) < 130:
+                print(f"   ⚠️  URI appears incomplete - missing query parameters!")
+                print(f"   Expected: ...sigma_gpt?retryWrites=true&w=majority&appName=Cluster0")
             print(f"   Check Render Dashboard → Environment → MONGODB_URI")
             return None
     

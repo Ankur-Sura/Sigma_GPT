@@ -461,7 +461,10 @@ try:
 except Exception as e:
     print(f"⚠️ RAG Checkpointer: MongoDB connection failed: {e}")
     print(f"   Raw URI from env: {MONGO_URI[:80]}..." if len(MONGO_URI) > 80 else f"   Raw URI from env: {MONGO_URI}")
-    print(f"   URI length: {len(MONGO_URI)} characters")
+    print(f"   URI length: {len(MONGO_URI)} characters (should be ~130-140)")
+    if len(MONGO_URI) < 130:
+        print(f"   ⚠️  URI appears incomplete - missing query parameters!")
+        print(f"   Expected: ...sigma_gpt?retryWrites=true&w=majority&appName=Cluster0")
     print(f"   Check Render Dashboard → Environment → MONGO_URI or MONGODB_URI")
     _rag_checkpoints = None
 
