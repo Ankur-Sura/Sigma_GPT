@@ -256,14 +256,37 @@ From pypdf library (pip install pypdf).
 
 # ----- OCR Support for Scanned PDFs -----
 try:
-    from pdf2image import convert_from_bytes
-    import pytesseract
     from PIL import Image
 except Exception:
-    # These are optional - some systems might not have them
-    convert_from_bytes = None
-    pytesseract = None
     Image = None
+
+# EasyOCR - Pure Python OCR (works on Render!)
+try:
+    import easyocr
+    _pdf_easyocr_reader = None
+    def get_pdf_easyocr_reader():
+        global _pdf_easyocr_reader
+        if _pdf_easyocr_reader is None:
+            print("🔤 Initializing EasyOCR for PDF processing...")
+            _pdf_easyocr_reader = easyocr.Reader(['en'], gpu=False)
+            print("✅ EasyOCR initialized for PDFs")
+        return _pdf_easyocr_reader
+except Exception:
+    easyocr = None
+    def get_pdf_easyocr_reader():
+        return None
+
+# Tesseract - Fallback (requires system install)
+try:
+    import pytesseract
+except Exception:
+    pytesseract = None
+
+# PDF to Image conversion
+try:
+    from pdf2image import convert_from_bytes
+except Exception:
+    convert_from_bytes = None
 
 """
 📖 What is OCR?
@@ -273,8 +296,9 @@ OCR = Optical Character Recognition
 ✔ Converts IMAGES of text into actual text
 ✔ Used when PDF pages are scanned (images, not text)
 
-pdf2image: Converts PDF pages to images
-pytesseract: Python wrapper for Tesseract OCR engine
+EasyOCR: Pure Python deep learning OCR - WORKS ON RENDER!
+pdf2image: Converts PDF pages to images (requires Poppler)
+pytesseract: Fallback OCR (requires Tesseract on system)
 PIL (Pillow): Python Imaging Library for image processing
 
 📌 These are OPTIONAL because not all PDFs need OCR.
@@ -876,7 +900,11 @@ async def upload_pdf(file: UploadFile = File(...)):
         
         pages = []
         full_text_parts = []
-        ocr_available = convert_from_bytes is not None and pytesseract is not None
+        
+        # Check which OCR engines are available
+        easyocr_available = easyocr is not None
+        tesseract_available = pytesseract is not None and convert_from_bytes is not None
+        ocr_available = easyocr_available or tesseract_available
         
         for idx, page in enumerate(reader.pages):
             # Try to extract text normally first
@@ -884,21 +912,47 @@ async def upload_pdf(file: UploadFile = File(...)):
             
             # OCR Fallback: If page has no text and OCR is available
             if len(page_text.strip()) < 10 and ocr_available:
-                try:
-                    # Convert PDF page to image
-                    images = convert_from_bytes(
-                        content,
-                        first_page=idx + 1,
-                        last_page=idx + 1,
-                        dpi=300  # Higher DPI = better OCR accuracy
-                    )
-                    if images:
-                        # Run OCR on the image
-                        ocr_text = pytesseract.image_to_string(images[0])
-                        if ocr_text.strip():
-                            page_text = ocr_text
-                except Exception:
-                    pass  # OCR failed, continue with empty text
+                print(f"📄 Page {idx + 1}: Low text content, attempting OCR...")
+                
+                # Try EasyOCR first (works on Render!)
+                if easyocr_available and convert_from_bytes is not None:
+                    try:
+                        # Convert PDF page to image
+                        images = convert_from_bytes(
+                            content,
+                            first_page=idx + 1,
+                            last_page=idx + 1,
+                            dpi=200  # Lower DPI for faster processing
+                        )
+                        if images:
+                            import numpy as np
+                            img_array = np.array(images[0])
+                            reader_ocr = get_pdf_easyocr_reader()
+                            if reader_ocr:
+                                results = reader_ocr.readtext(img_array)
+                                ocr_text = "\n".join([r[1] for r in results])
+                                if ocr_text.strip():
+                                    page_text = ocr_text
+                                    print(f"✅ EasyOCR extracted text from page {idx + 1}")
+                    except Exception as e:
+                        print(f"⚠️ EasyOCR failed for page {idx + 1}: {e}")
+                
+                # Fallback to Tesseract if EasyOCR didn't work
+                if len(page_text.strip()) < 10 and tesseract_available:
+                    try:
+                        images = convert_from_bytes(
+                            content,
+                            first_page=idx + 1,
+                            last_page=idx + 1,
+                            dpi=300
+                        )
+                        if images:
+                            ocr_text = pytesseract.image_to_string(images[0])
+                            if ocr_text.strip():
+                                page_text = ocr_text
+                                print(f"✅ Tesseract extracted text from page {idx + 1}")
+                    except Exception as e:
+                        print(f"⚠️ Tesseract failed for page {idx + 1}: {e}")
             
             pages.append({"page": idx + 1, "text": page_text})
             full_text_parts.append(f"[Page {idx + 1}]\n{page_text}")

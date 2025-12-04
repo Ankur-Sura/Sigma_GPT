@@ -188,23 +188,47 @@ Whisper is OpenAI's speech-to-text model.
 # ----- OCR Imports (Optional) -----
 try:
     from PIL import Image, ImageOps, ImageFilter
-    import pytesseract
     import numpy as np
 except Exception:
     Image = None
     ImageOps = None
     ImageFilter = None
-    pytesseract = None
     np = None
+
+# EasyOCR - Pure Python OCR (works on Render free tier!)
+try:
+    import easyocr
+    # Initialize EasyOCR reader (lazy loading)
+    _easyocr_reader = None
+    def get_easyocr_reader():
+        global _easyocr_reader
+        if _easyocr_reader is None:
+            print("🔤 Initializing EasyOCR (first use)...")
+            _easyocr_reader = easyocr.Reader(['en'], gpu=False)  # CPU mode for Render
+            print("✅ EasyOCR initialized")
+        return _easyocr_reader
+except Exception as e:
+    print(f"⚠️ EasyOCR not available: {e}")
+    easyocr = None
+    def get_easyocr_reader():
+        return None
+
+# Tesseract - Fallback OCR (requires system install)
+try:
+    import pytesseract
+except Exception:
+    pytesseract = None
 
 """
 📖 OCR Dependencies
 -------------------
+EasyOCR: Pure Python deep learning OCR - WORKS ON RENDER!
 PIL (Pillow): Python Imaging Library for image processing
-pytesseract: Python wrapper for Tesseract OCR engine
+pytesseract: Fallback - requires Tesseract installed on system
 numpy: For numerical operations on image arrays
 
-📌 These are optional - if not installed, OCR endpoints will return an error
+📌 EasyOCR is the primary OCR engine (no system install needed)
+📌 Tesseract is fallback (requires system install)
 """
 
 # =============================================================================
@@ -1311,10 +1335,20 @@ async def ocr_image(
         raise HTTPException(status_code=400, detail="Only image files are supported")
     
     # Check if OCR dependencies are installed
-    if not Image or not pytesseract:
+    if not Image:
         raise HTTPException(
-            status_code=503,  # Service Unavailable (not user's fault)
-            detail="OCR service is currently unavailable. Tesseract OCR engine is not installed on the server. Please try again later or contact support."
+            status_code=503,
+            detail="OCR service is currently unavailable. Image processing library not installed."
+        )
+    
+    # Check if we have ANY OCR engine available
+    easyocr_available = easyocr is not None
+    tesseract_available = pytesseract is not None
+    
+    if not easyocr_available and not tesseract_available:
+        raise HTTPException(
+            status_code=503,
+            detail="OCR service is currently unavailable. No OCR engine installed."
         )
     
     try:
@@ -1324,57 +1358,53 @@ async def ocr_image(
         # Preprocess image for better OCR
         prepped = preprocess_for_ocr(content)
         
-        # Run OCR with improved configuration
-        config = "--psm 3 --oem 3"
-        """
-        📖 Tesseract Configuration (IMPROVED!)
-        --------------------------------------
-        --psm 3: Fully automatic page segmentation (best for mixed content)
-        --oem 3: Use LSTM neural network engine (most accurate)
+        text = ""
+        ocr_engine_used = "none"
         
-        PSM modes:
-        - 0: Orientation and script detection (OSD) only
-        - 3: Fully automatic page segmentation (BEST FOR GENERAL USE)
-        - 4: Assume single column of variable size
-        - 6: Assume single uniform block of text
-        - 7: Single text line
-        - 11: Sparse text
+        # 🆕 TRY EASYOCR FIRST (pure Python, works on Render!)
+        if easyocr_available:
+            try:
+                print("🔤 Attempting EasyOCR...")
+                reader = get_easyocr_reader()
+                if reader:
+                    # Convert PIL Image to numpy array for EasyOCR
+                    import numpy as np
+                    img_array = np.array(prepped)
+                    
+                    # Run EasyOCR
+                    results = reader.readtext(img_array)
+                    
+                    # Extract text from results
+                    text_parts = [result[1] for result in results]
+                    text = "\n".join(text_parts).strip()
+                    ocr_engine_used = "EasyOCR"
+                    print(f"✅ EasyOCR extracted {len(text)} characters")
+            except Exception as easy_err:
+                print(f"⚠️ EasyOCR failed: {easy_err}")
+                text = ""
         
-        We use 3 (auto) because:
-        - It adapts to different layouts (receipts, screenshots, docs)
-        - Better at handling mixed content (text + numbers)
-        - More accurate for structured documents
-        
-        OEM modes:
-        - 0: Legacy engine only
-        - 1: LSTM engine only
-        - 2: Legacy + LSTM
-        - 3: Default (use whatever is available, prefers LSTM)
-        
-        📌 WHY THESE CHANGES?
-        --------------------
-        Previous config disabled dictionary corrections (bad for normal text).
-        Now using LSTM (neural network) which is more accurate for:
-        - Currency values (₹396.85)
-        - Dates (8 Nov 2025)
-        - Proper nouns (LinkedIn, ICICI)
-        
-        📌 RESULT: Better accuracy for documents, receipts, and general text!
-        """
-        
-        # 🆕 Try with Hindi support first (includes ₹ Rupee symbol)
-        # Then fallback to English only if Hindi data not available
-        try:
-            # Check if Hindi language data is available
-            available_langs = pytesseract.get_languages()
-            if 'hin' in available_langs:
-                # Use English + Hindi for Rupee symbol support
-                text = (pytesseract.image_to_string(prepped, lang="eng+hin", config=config) or "").strip()
-            else:
-                text = (pytesseract.image_to_string(prepped, lang="eng", config=config) or "").strip()
-        except Exception:
-            # Fallback to English only
-            text = (pytesseract.image_to_string(prepped, lang="eng", config=config) or "").strip()
+        # FALLBACK TO TESSERACT if EasyOCR failed or not available
+        if not text and tesseract_available:
+            try:
+                print("🔤 Attempting Tesseract OCR...")
+                config = "--psm 3 --oem 3"
+                
+                # Try with Hindi support first (includes ₹ Rupee symbol)
+                try:
+                    available_langs = pytesseract.get_languages()
+                    if 'hin' in available_langs:
+                        text = (pytesseract.image_to_string(prepped, lang="eng+hin", config=config) or "").strip()
+                    else:
+                        text = (pytesseract.image_to_string(prepped, lang="eng", config=config) or "").strip()
+                except Exception:
+                    text = (pytesseract.image_to_string(prepped, lang="eng", config=config) or "").strip()
+                
+                ocr_engine_used = "Tesseract"
+                print(f"✅ Tesseract extracted {len(text)} characters")
+            except Exception as tess_err:
+                print(f"⚠️ Tesseract failed: {tess_err}")
+                if not text:
+                    raise tess_err
         
         # 🆕 Post-processing: Fix common OCR mistakes for currency symbols
         text = fix_currency_symbols(text)

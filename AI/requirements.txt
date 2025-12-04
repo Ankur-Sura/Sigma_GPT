@@ -208,23 +208,25 @@ pymongo>=4.0.0
 #                     OCR (IMAGE TO TEXT)
 # =============================================================================
 
+easyocr>=1.7.0
+# 📖 EasyOCR - Ready-to-use OCR with deep learning
+# From: https://github.com/JaidedAI/EasyOCR
+# Why: Pure Python OCR - NO SYSTEM INSTALLATION NEEDED!
+# Used in: tools_service.py, rag_service.py
+# 📌 Works on Render free tier (unlike Tesseract)
+# 📌 Supports 80+ languages including English, Hindi, etc.
+
 pytesseract>=0.3.10
-# 📖 Pytesseract - Python wrapper for Tesseract OCR
+# 📖 Pytesseract - Python wrapper for Tesseract OCR (fallback)
 # From: https://github.com/madmaze/pytesseract
-# Why: Extract text from images (screenshots, scanned docs)
-# Used in: tools_service.py - pytesseract.image_to_string(...)
-# 📌 Requires Tesseract installed on system:
-#    macOS: brew install tesseract
-#    Ubuntu: sudo apt-get install tesseract-ocr
+# Why: Fallback OCR if EasyOCR fails
+# 📌 Requires Tesseract on system (won't work on Render free tier)
 
 pdf2image>=1.17.0
 # 📖 PDF2Image - Convert PDF pages to images
 # From: https://github.com/Belval/pdf2image
 # Why: OCR for scanned PDFs (convert page to image, then OCR)
-# Used in: rag_service.py - convert_from_bytes(...)
-# 📌 Requires Poppler installed on system:
-#    macOS: brew install poppler
-#    Ubuntu: sudo apt-get install poppler-utils
+# 📌 Requires Poppler installed on system
 
 Pillow>=10.4.0
 # 📖 Pillow (PIL) - Python Imaging Library
