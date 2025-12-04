@@ -312,114 +312,91 @@ def is_ocr_space_available():
 
 def fix_ocr_code_formatting(text: str) -> str:
     """
-    Fix OCR output that concatenates words without spaces.
-    Especially important for code where 'publicstaticvoid' should be 'public static void'
-    
-    Examples:
-    - publicstaticNoderightRotate → public static Node rightRotate
-    - returnroot → return root
-    - intgetBalance → int getBalance
+    Fix PDF/OCR text that concatenates words without spaces.
     """
     import re
     
-    # ==========================================================================
-    # STEP 1: Add spaces before/after Java keywords
-    # ==========================================================================
-    # Keywords that should ALWAYS have space before AND after
-    keywords = [
-        # Access modifiers
-        'public', 'private', 'protected',
-        # Other modifiers
-        'static', 'final', 'abstract', 'synchronized', 'volatile', 'transient',
-        # Types
-        'void', 'int', 'long', 'short', 'byte', 'float', 'double', 'boolean', 'char',
-        # Control flow
-        'if', 'else', 'while', 'for', 'do', 'switch', 'case', 'default', 'break', 'continue',
-        # Class/object
-        'class', 'interface', 'enum', 'extends', 'implements', 'new', 'this', 'super',
-        # Exception
-        'try', 'catch', 'finally', 'throw', 'throws',
-        # Other
-        'return', 'import', 'package', 'instanceof',
-        # Literals
-        'null', 'true', 'false',
-        # Common class names
-        'String', 'Integer', 'Boolean', 'Object', 'List', 'ArrayList', 'HashMap', 'Map',
-        'Node', 'Math', 'System', 'Arrays',
-    ]
+    if not text:
+        return text
     
-    # Sort by length (longest first) to avoid partial matches
-    keywords = sorted(set(keywords), key=len, reverse=True)
+    # ==========================================================================
+    # Simple regex-based approach: Insert spaces around known keywords
+    # ==========================================================================
     
-    # Add space BEFORE keyword if preceded by letter/digit (not already space)
+    # Keywords followed by uppercase letter need space: "staticNode" → "static Node"
+    keywords = ['public', 'private', 'protected', 'static', 'final', 'abstract',
+                'void', 'int', 'long', 'short', 'byte', 'float', 'double', 'boolean', 'char',
+                'class', 'interface', 'enum', 'extends', 'implements',
+                'return', 'throw', 'throws', 'try', 'catch', 'finally',
+                'new', 'this', 'super', 'null', 'true', 'false']
+    
+    # Add space AFTER keyword when followed by uppercase
     for kw in keywords:
-        # Pattern: letter/digit immediately before keyword
-        text = re.sub(rf'([a-zA-Z0-9])({kw})\b', rf'\1 \2', text, flags=re.IGNORECASE)
-        # Pattern: keyword immediately followed by uppercase letter
-        text = re.sub(rf'\b({kw})([A-Z])', rf'\1 \2', text)
+        text = re.sub(rf'({kw})([A-Z])', rf'\1 \2', text)
+    
+    # Add space BEFORE keyword when preceded by lowercase letter and keyword at word start
+    # "publicstatic" → "public static"
+    for kw in sorted(keywords, key=len, reverse=True):  # Longest first
+        # Look for: lowercase + keyword + (uppercase or keyword or end)
+        text = re.sub(rf'([a-z])({kw})([A-Z])', rf'\1 \2 \3', text)
+        text = re.sub(rf'([a-z])({kw})$', rf'\1 \2', text)
+        # Handle keyword at start of what looks like concatenation
+        for kw2 in keywords:
+            if kw != kw2:
+                text = re.sub(rf'({kw})({kw2})', rf'\1 \2', text)
     
     # ==========================================================================
-    # STEP 2: Fix specific stuck patterns
+    # Handle type names: "Noderoot" → "Node root"
+    # ==========================================================================
+    types = ['Node', 'String', 'Integer', 'Boolean', 'Object', 'List', 'Math', 'System', 'Arrays']
+    
+    for tn in types:
+        # Type followed by lowercase: "Noderoot" → "Node root"
+        text = re.sub(rf'({tn})([a-z])', rf'\1 \2', text)
+        # Lowercase followed by Type: "xNode" → "x Node"
+        text = re.sub(rf'([a-z])({tn})', rf'\1 \2', text)
+    
+    # ==========================================================================
+    # Specific fixes
     # ==========================================================================
     
-    # Fix "returnroot" -> "return root"
+    # "intgetBalance" → "int getBalance"
+    text = re.sub(r'\bint([a-z])', r'int \1', text)
+    # "voidmain" → "void main"  
+    text = re.sub(r'\bvoid([a-z])', r'void \1', text)
+    # "returnroot" → "return root"
     text = re.sub(r'\breturn([a-z])', r'return \1', text)
+    # "newNode" → "new Node"
+    text = re.sub(r'\bnew([A-Z])', r'new \1', text)
     
-    # Fix "elseif" -> "else if"
-    text = re.sub(r'\belse\s*if\b', 'else if', text)
+    # ==========================================================================
+    # Fix operators and brackets
+    # ==========================================================================
     
-    # Fix "){"  -> ") {"
-    text = re.sub(r'\)\{', ') {', text)
+    # Operators
+    text = re.sub(r'([a-zA-Z0-9])=([a-zA-Z0-9])', r'\1 = \2', text)
+    text = re.sub(r'([a-zA-Z0-9])==([a-zA-Z0-9])', r'\1 == \2', text)
+    text = re.sub(r'([a-zA-Z0-9])!=([a-zA-Z0-9])', r'\1 != \2', text)
+    text = re.sub(r'([a-zA-Z0-9])<([a-zA-Z0-9])', r'\1 < \2', text)
+    text = re.sub(r'([a-zA-Z0-9])>([a-zA-Z0-9])', r'\1 > \2', text)
+    text = re.sub(r'([a-zA-Z0-9])&&([a-zA-Z0-9])', r'\1 && \2', text)
+    text = re.sub(r'([a-zA-Z0-9])\|\|([a-zA-Z0-9])', r'\1 || \2', text)
     
-    # Fix "){" patterns
-    text = re.sub(r'\)\s*\{', ') {', text)
-    
-    # Fix "if(" -> "if ("
+    # Brackets
     text = re.sub(r'\b(if|while|for|switch|catch)\(', r'\1 (', text)
+    text = re.sub(r'\)\{', r') {', text)
     
-    # ==========================================================================
-    # STEP 3: Fix operators without spaces
-    # ==========================================================================
-    
-    # Fix "x=y" -> "x = y" (but not == or !=)
-    text = re.sub(r'(\w)([+\-*/%]?=)(?!=)(\w)', r'\1 \2 \3', text)
-    
-    # Fix comparison operators: "x<y" -> "x < y"
-    text = re.sub(r'(\w)(<|>|<=|>=|==|!=)(\w)', r'\1 \2 \3', text)
-    
-    # Fix "x+y" -> "x + y"
-    text = re.sub(r'(\w)([+\-])(\w)', r'\1 \2 \3', text)
-    
-    # ==========================================================================
-    # STEP 4: Fix merged words (CamelCase that got stuck)
-    # ==========================================================================
-    
-    # Fix "NodeT2" -> "Node T2" (uppercase followed by uppercase+digit)
-    text = re.sub(r'([a-z])([A-Z][A-Z0-9])', r'\1 \2', text)
-    
-    # Fix general merged words: "heightMath" -> "height Math"
-    text = re.sub(r'([a-z])([A-Z][a-z]{2,})', r'\1 \2', text)
-    
-    # ==========================================================================
-    # STEP 5: Clean up
-    # ==========================================================================
-    
-    # Fix multiple spaces
+    # Cleanup
     text = re.sub(r'  +', ' ', text)
-    
-    # Fix spaces before punctuation
     text = re.sub(r' +([;,\.\)])', r'\1', text)
-    
-    # Fix spaces after opening brackets
-    text = re.sub(r'([(\[]) +', r'\1', text)
     
     return text
 
 
 def clean_ocr_text(text: str) -> str:
     """
-    Clean and improve OCR text quality.
-    Detects if text is code and applies appropriate formatting.
+    Clean and improve PDF/OCR text quality.
+    ALWAYS applies formatting fixes (not just for code).
     """
     import re
     
@@ -429,17 +406,15 @@ def clean_ocr_text(text: str) -> str:
     # Basic cleanup
     text = text.strip()
     
-    # Remove common OCR artifacts
+    # Remove common OCR/PDF artifacts
     text = text.replace('\x0c', '\n')  # Form feed
     text = text.replace('\r\n', '\n')
     text = text.replace('\r', '\n')
     
-    # Detect if this looks like code (has programming keywords)
-    code_indicators = ['public', 'private', 'class', 'def ', 'function', 'return', 'import', 'void', 'static']
-    looks_like_code = any(indicator in text.lower() for indicator in code_indicators)
-    
-    if looks_like_code:
-        text = fix_ocr_code_formatting(text)
+    # ALWAYS apply code formatting fix
+    # PDF text extraction often concatenates words even for non-code
+    # The fix_ocr_code_formatting function is safe for all text
+    text = fix_ocr_code_formatting(text)
     
     # Clean up excessive newlines
     text = re.sub(r'\n{3,}', '\n\n', text)
