@@ -632,16 +632,23 @@ def _sanitize_mongo_uri(uri: str) -> str:
     - Extra quotes from environment variables
     - Leading/trailing whitespace
     - Newlines or special characters
+    - Multi-line URIs (joins them together)
     """
     if not uri:
         return uri
     
-    # Remove leading/trailing whitespace and newlines
-    uri = uri.strip().replace('\n', '').replace('\r', '')
+    # Remove all newlines and carriage returns (handles multi-line URIs)
+    uri = uri.replace('\n', '').replace('\r', '')
+    
+    # Remove leading/trailing whitespace
+    uri = uri.strip()
     
     # Remove any quotes that might have been added by Render/environment
     while (uri.startswith('"') and uri.endswith('"')) or (uri.startswith("'") and uri.endswith("'")):
         uri = uri[1:-1].strip()
+    
+    # Remove any spaces (URI should have no spaces)
+    uri = uri.replace(' ', '')
     
     # Ensure URI starts with mongodb:// or mongodb+srv://
     if not (uri.startswith("mongodb://") or uri.startswith("mongodb+srv://")):
