@@ -92,8 +92,10 @@ langchain>=0.3.0,<0.4.0
 # From: https://python.langchain.com/
 # Why: Required by stock_graph.py for langchain.globals.set_debug() and set_verbose()
 # Used in: stock_graph.py - from langchain.globals import set_debug, set_verbose
-# 📌 IMPORTANT: Constrained to <0.4.0 to ensure compatibility with langchain-qdrant<1.0.0
-# Langchain 0.4+ requires langchain-qdrant 1.x, which breaks compatibility with existing Qdrant data
+# 📌 CRITICAL CONSTRAINT: MUST be <0.4.0 (NOT <1.0.0)
+# ⚠️ REASON: langchain-qdrant<1.0.0 only works with langchain 0.3.x
+# ⚠️ langchain 0.4+ requires langchain-qdrant 1.x, which breaks existing Qdrant data
+# ⚠️ DO NOT CHANGE to <1.0.0 - it will cause dependency conflicts and break deployments!
 
 langgraph>=0.2.0,<1.0.0
 # 📖 LangGraph - Build stateful, multi-actor applications with LLMs
