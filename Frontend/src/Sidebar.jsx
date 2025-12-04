@@ -177,12 +177,37 @@ function Sidebar() {
         }
     }
 
+    // 🆕 Close sidebar when clicking backdrop (mobile)
+    useEffect(() => {
+        const handleBackdropClick = (e) => {
+            if (sidebarOpen && e.target.classList.contains('sidebar') && !e.target.closest('.sidebar > *')) {
+                setSidebarOpen(false);
+            }
+        };
+        
+        if (sidebarOpen) {
+            document.addEventListener('click', handleBackdropClick);
+            return () => document.removeEventListener('click', handleBackdropClick);
+        }
+    }, [sidebarOpen]);
+
     return (
-        <section className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <section 
+            className={`sidebar ${sidebarOpen ? 'open' : ''}`}
+            onClick={(e) => {
+                // Close sidebar when clicking backdrop
+                if (e.target === e.currentTarget) {
+                    setSidebarOpen(false);
+                }
+            }}
+        >
             {/* 🆕 Mobile Hamburger Button */}
             <button 
                 className="mobile-menu-toggle"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setSidebarOpen(!sidebarOpen);
+                }}
                 aria-label="Toggle menu"
             >
                 <i className={`fa-solid ${sidebarOpen ? 'fa-times' : 'fa-bars'}`}></i>

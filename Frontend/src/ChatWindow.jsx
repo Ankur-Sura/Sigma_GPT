@@ -1163,10 +1163,15 @@ function ChatWindow() {
                 <button 
                     className="mobile-menu-btn"
                     onClick={() => {
-                        // Trigger sidebar open via event or context
+                        // Toggle sidebar via DOM class (Sidebar component manages its own state)
                         const sidebar = document.querySelector('.sidebar');
                         if (sidebar) {
-                            sidebar.classList.toggle('open');
+                            const isOpen = sidebar.classList.contains('open');
+                            if (isOpen) {
+                                sidebar.classList.remove('open');
+                            } else {
+                                sidebar.classList.add('open');
+                            }
                         }
                     }}
                     aria-label="Open menu"
