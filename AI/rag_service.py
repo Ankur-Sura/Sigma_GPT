@@ -266,39 +266,50 @@ except Exception:
 OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "K85482928388957")  # Free demo key
 
 def ocr_space_for_pdf(image_bytes: bytes) -> str:
-    """Call OCR.space API for PDF page OCR"""
+    """Call OCR.space API for PDF page OCR with optimized settings"""
     import base64
     import requests
     
     try:
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
         
+        # Optimized payload for better PDF OCR accuracy
         payload = {
             'apikey': OCR_SPACE_API_KEY,
             'base64Image': f'data:image/png;base64,{base64_image}',
             'language': 'eng',
-            'isOverlayRequired': False,
-            'detectOrientation': True,
-            'scale': True,
-            'OCREngine': 2  # Engine 2 better for most images
+            'isOverlayRequired': False,  # Don't need overlay for text extraction
+            'detectOrientation': True,   # Auto-rotate if needed
+            'scale': True,               # Scale up small text
+            'OCREngine': 2,              # Engine 2: Better for documents
+            'detectCheckbox': False,     # Not needed for code/text
+            'isCreateSearchablePdf': False,  # We only need text
+            'isSearchablePdfHideTextLayer': False,
         }
         
         response = requests.post(
             'https://api.ocr.space/parse/image',
             data=payload,
-            timeout=30
+            timeout=60  # Increased timeout for better quality processing
         )
         
         result = response.json()
         
         if result.get('IsErroredOnProcessing'):
+            error_msg = result.get('ErrorMessage', ['Unknown error'])
+            print(f"⚠️ OCR.space error: {error_msg}")
             return ""
         
         parsed_results = result.get('ParsedResults', [])
         if parsed_results:
             text = parsed_results[0].get('ParsedText', '').strip()
-            # 🔧 NO currency symbol conversion here - let text stay as-is
-            # The issue with "2" → "₹" caused problems before
+            
+            # Clean up common OCR artifacts
+            # Remove excessive whitespace but preserve line breaks
+            import re
+            text = re.sub(r'[ \t]+', ' ', text)  # Multiple spaces → single space
+            text = re.sub(r' +([\n\r])', r'\1', text)  # Remove trailing spaces before newlines
+            
             return text
         
         return ""
@@ -424,27 +435,63 @@ def fix_ocr_code_formatting(text: str) -> str:
 def clean_ocr_text(text: str) -> str:
     """
     Clean and improve PDF/OCR text quality.
-    ALWAYS applies formatting fixes (not just for code).
+    PRESERVES line breaks and fixes word splitting issues.
     """
     import re
     
     if not text:
         return ""
     
-    # Basic cleanup
+    # Basic cleanup - PRESERVE line breaks!
     text = text.strip()
     
-    # Remove common OCR/PDF artifacts
-    text = text.replace('\x0c', '\n')  # Form feed
-    text = text.replace('\r\n', '\n')
-    text = text.replace('\r', '\n')
+    # Remove common OCR/PDF artifacts but keep newlines
+    text = text.replace('\x0c', '\n')  # Form feed → newline
+    text = text.replace('\r\n', '\n')  # Windows line breaks
+    text = text.replace('\r', '\n')    # Mac line breaks
+    
+    # ==========================================================================
+    # FIX: Words with spaces inserted in middle (OCR error)
+    # ==========================================================================
+    # Examples: "bal an cing" → "balancing", "Bal a nce" → "Balance"
+    # "AVLT rees" → "AVLTrees", "this. data" → "this.data"
+    
+    # Fix common word splits with single letters
+    # "bal an cing" → "balancing" (a + n + cing)
+    text = re.sub(r'([a-z])\s+an\s+([a-z])', r'\1an\2', text, flags=re.IGNORECASE)
+    # "Bal a nce" → "Balance" (a + nce)
+    text = re.sub(r'([A-Z][a-z]*)\s+a\s+([a-z]{2,})', r'\1a\2', text)
+    # "bal an cing" → "balancing" (an + cing)
+    text = re.sub(r'([a-z])\s+an\s+([a-z]{3,})', r'\1an\2', text, flags=re.IGNORECASE)
+    
+    # Fix common suffixes split incorrectly
+    # "rot at ion" → "rotation"
+    text = re.sub(r'([a-z]+)\s+at\s+ion\b', r'\1ation', text, flags=re.IGNORECASE)
+    # "Bal a nce" → "Balance"  
+    text = re.sub(r'([A-Z][a-z]*)\s+a\s+nce\b', r'\1ance', text)
+    # "return ed" → "returned"
+    text = re.sub(r'([a-z]+)\s+ed\b', r'\1ed', text, flags=re.IGNORECASE)
+    # "bal an cing" → "balancing"
+    text = re.sub(r'([a-z]+)\s+an\s+cing\b', r'\1ancing', text, flags=re.IGNORECASE)
+    # "ing " patterns
+    text = re.sub(r'([a-z]+)\s+ing\b', r'\1ing', text, flags=re.IGNORECASE)
+    
+    # Fix class names split: "AVLT rees" → "AVLTrees"
+    text = re.sub(r'([A-Z]{2,})\s+([a-z]+)', r'\1\2', text)
+    
+    # Fix property access: "this. data" → "this.data"
+    text = re.sub(r'([a-z]+)\.\s+([a-z])', r'\1.\2', text, flags=re.IGNORECASE)
+    
+    # Fix words split by single letter: "word a word" → "wordaword" (if it makes sense)
+    # Only if the letter is 'a', 'i', 'o' (common in words)
+    text = re.sub(r'([a-z]{2,})\s+a\s+([a-z]{2,})', r'\1a\2', text)  # "bal ancing" → "balancing"
+    text = re.sub(r'([a-z]{2,})\s+i\s+([a-z]{2,})', r'\1i\2', text)  # "do ing" → "doing"
+    text = re.sub(r'([a-z]{2,})\s+o\s+([a-z]{2,})', r'\1o\2', text)  # "go ing" → "going"
     
     # ALWAYS apply code formatting fix
-    # PDF text extraction often concatenates words even for non-code
-    # The fix_ocr_code_formatting function is safe for all text
     text = fix_ocr_code_formatting(text)
     
-    # Clean up excessive newlines
+    # Clean up excessive newlines (but preserve intentional line breaks)
     text = re.sub(r'\n{3,}', '\n\n', text)
     
     return text
@@ -1101,18 +1148,33 @@ async def upload_pdf(file: UploadFile = File(...)):
                 try:
                     print(f"🔍 Page {idx + 1}: Running OCR to capture image text...")
                     
-                    # Convert PDF page to image
+                    # Convert PDF page to image at HIGHER DPI for better OCR
                     images = convert_from_bytes(
                         content,
                         first_page=idx + 1,
                         last_page=idx + 1,
-                        dpi=200  # Good balance of quality and speed
+                        dpi=300  # Increased from 200 for better OCR accuracy
                     )
                     
                     if images:
+                        # Preprocess image for better OCR results
+                        from PIL import Image, ImageEnhance, ImageFilter
+                        img = images[0]
+                        
+                        # Convert to RGB if needed
+                        if img.mode != 'RGB':
+                            img = img.convert('RGB')
+                        
+                        # Enhance contrast for better text recognition
+                        enhancer = ImageEnhance.Contrast(img)
+                        img = enhancer.enhance(1.5)  # Increase contrast
+                        
+                        # Sharpen image slightly
+                        img = img.filter(ImageFilter.SHARPEN)
+                        
                         # Convert PIL image to bytes for OCR.space
                         img_buffer = BytesIO()
-                        images[0].save(img_buffer, format='PNG')
+                        img.save(img_buffer, format='PNG', optimize=False, quality=95)
                         img_bytes = img_buffer.getvalue()
                         
                         # Try OCR.space API first (fast!)
@@ -1175,16 +1237,22 @@ async def upload_pdf(file: UploadFile = File(...)):
             
             if pdf_text and ocr_text:
                 # Both have text - ALWAYS include PDF text first, then add OCR content
+                # PRESERVE line breaks from PDF text!
                 combined_text = f"**📄 Text Content:**\n{pdf_text}"
                 
                 # Check if OCR is significantly longer (means it captured image content too)
                 # Or if OCR has code-like content not in PDF text
-                ocr_lines = [line.strip() for line in ocr_text.split('\n') if line.strip()]
+                # PRESERVE line structure from OCR too!
+                ocr_lines = ocr_text.split('\n')  # Keep empty lines for structure
                 pdf_lower = pdf_text.lower()
                 unique_ocr_lines = []
                 
                 for line in ocr_lines:
                     line_clean = line.strip()
+                    # Skip empty lines for duplicate check, but preserve structure
+                    if not line_clean:
+                        continue
+                    
                     # Only add lines that are:
                     # 1. Not already in PDF text (fuzzy match)
                     # 2. Long enough to be meaningful
@@ -1197,9 +1265,10 @@ async def upload_pdf(file: UploadFile = File(...)):
                     if (not is_duplicate 
                         and len(line_clean) > 5 
                         and any(c.isalpha() for c in line_clean)):
-                        unique_ocr_lines.append(line_clean)
+                        unique_ocr_lines.append(line_clean)  # Keep original line, not stripped
                 
                 if unique_ocr_lines:
+                    # Join with newlines to preserve line structure
                     ocr_content = "\n".join(unique_ocr_lines)
                     
                     # Check if OCR content is code

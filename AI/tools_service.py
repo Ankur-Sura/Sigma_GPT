@@ -1273,8 +1273,10 @@ def fix_currency_symbols(text: str) -> str:
     # OCR sometimes reads ₹ as "7". Only fix when clearly currency context.
     
     # Pattern 1: "Up to 7396.85" or "limit 7396.85" → "Up to ₹7396.85"
-    # Look for currency context words followed by "7" + number
+    # Handle BOTH with comma (7,396.85) and without (7396.85)
     currency_context = r'(?:limit|up to|amount|price|cost|total|balance|pay|paid|fee|charge|debit|upi|autopay|payment)\s+'
+    
+    # With comma: "7,396.85"
     text = re.sub(
         rf'({currency_context})7(\d{{1,2}},\d{{2,3}}(?:,\d{{2,3}})*\.\d{{2}})\b',
         r'\1₹\2',
@@ -1282,10 +1284,25 @@ def fix_currency_symbols(text: str) -> str:
         flags=re.IGNORECASE
     )
     
-    # Pattern 2: "7,396.85" when preceded by currency keyword (within 20 chars)
-    # More flexible pattern
+    # Without comma: "7396.85" (4+ digits before decimal)
     text = re.sub(
-        r'(?i)(?:limit|amount|price|total|balance|pay|fee|charge|debit|upi|autopay).{0,20}?\b7(\d{1,2},\d{2,3}(?:,\d{2,3})*\.\d{2})\b',
+        rf'({currency_context})7(\d{{4,}}\.\d{{2}})\b',
+        r'\1₹\2',
+        text,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 2: "7,396.85" or "7396.85" when preceded by currency keyword (within 30 chars)
+    # More flexible pattern - look backwards for currency context
+    text = re.sub(
+        r'(?i)(?:limit|amount|price|total|balance|pay|fee|charge|debit|upi|autopay|payment).{0,30}?\b7(\d{1,2},\d{2,3}(?:,\d{2,3})*\.\d{2})\b',
+        r'₹\1',
+        text
+    )
+    
+    # Without comma: "7396.85"
+    text = re.sub(
+        r'(?i)(?:limit|amount|price|total|balance|pay|fee|charge|debit|upi|autopay|payment).{0,30}?\b7(\d{4,}\.\d{2})\b',
         r'₹\1',
         text
     )
