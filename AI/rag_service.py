@@ -916,17 +916,18 @@ async def upload_pdf(file: UploadFile = File(...)):
                 collection_info = qdrant_client.get_collection(QDRANT_COLLECTION)
                 # Collection exists, check if payload schema has pdf_id index
                 payload_schema = collection_info.config.params.payload_schema
-                if payload_schema and "metadata" in payload_schema:
-                    metadata_schema = payload_schema.get("metadata", {})
-                    if "pdf_id" not in metadata_schema:
-                        # Add pdf_id index to existing collection
-                        print("🔧 Adding pdf_id index to existing collection...")
+                # Try to create index for both possible paths
+                for index_path in ["metadata.pdf_id", "pdf_id"]:
+                    try:
                         qdrant_client.create_payload_index(
                             collection_name=QDRANT_COLLECTION,
-                            field_name="metadata.pdf_id",
+                            field_name=index_path,
                             field_schema=PayloadSchemaType.KEYWORD
                         )
-                        print("✅ Added pdf_id index")
+                        print(f"✅ Added index for {index_path}")
+                    except Exception as idx_err:
+                        if "already exists" not in str(idx_err).lower():
+                            print(f"ℹ️ Index {index_path}: {idx_err}")
             except Exception as e:
                 # Collection doesn't exist or error accessing it
                 # LangChain will create it with from_documents
@@ -1021,17 +1022,23 @@ async def query_pdf(payload: dict):
         qdrant_client = QdrantClient(**qdrant_client_kwargs)
         
         # Try to create index if it doesn't exist (idempotent)
-        try:
-            qdrant_client.create_payload_index(
-                collection_name=QDRANT_COLLECTION,
-                field_name="metadata.pdf_id",
-                field_schema=PayloadSchemaType.KEYWORD
-            )
-            print("✅ Ensured pdf_id index exists")
-        except Exception as idx_err:
-            # Index might already exist, that's fine
-            if "already exists" not in str(idx_err).lower():
-                print(f"ℹ️ Index check: {idx_err}")
+        # Try both possible paths: "metadata.pdf_id" and "pdf_id"
+        index_paths = ["metadata.pdf_id", "pdf_id"]
+        for index_path in index_paths:
+            try:
+                qdrant_client.create_payload_index(
+                    collection_name=QDRANT_COLLECTION,
+                    field_name=index_path,
+                    field_schema=PayloadSchemaType.KEYWORD
+                )
+                print(f"✅ Created index for {index_path}")
+            except Exception as idx_err:
+                # Index might already exist, that's fine
+                err_str = str(idx_err).lower()
+                if "already exists" in err_str or "duplicate" in err_str:
+                    print(f"ℹ️ Index {index_path} already exists")
+                else:
+                    print(f"ℹ️ Index check for {index_path}: {idx_err}")
         
         # Connect to existing collection (with API key for Qdrant Cloud)
         connection_kwargs = {
@@ -1047,17 +1054,42 @@ async def query_pdf(payload: dict):
         # -----------------------------------------
         # This ensures we only get chunks from the specified PDF
         # Uses Qdrant's filtering capability
+        # Try metadata.pdf_id first (LangChain's standard), fallback to pdf_id
         
-        qdrant_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="metadata.pdf_id",  # LangChain stores metadata here
-                    match=MatchValue(value=pdf_id)
+        try:
+            # Try with metadata.pdf_id first (most common in LangChain)
+            qdrant_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="metadata.pdf_id",
+                        match=MatchValue(value=pdf_id)
+                    )
+                ]
+            )
+            # Test if this filter works by doing a quick search
+            test_results = vector_db.similarity_search(
+                query=question,
+                k=1,
+                filter=qdrant_filter
+            )
+            filter_key = "metadata.pdf_id"
+        except Exception as filter_err:
+            # If metadata.pdf_id fails, try pdf_id directly
+            if "index" in str(filter_err).lower() or "not found" in str(filter_err).lower():
+                print(f"ℹ️ metadata.pdf_id filter failed, trying pdf_id: {filter_err}")
+                qdrant_filter = Filter(
+                    must=[
+                        FieldCondition(
+                            key="pdf_id",
+                            match=MatchValue(value=pdf_id)
+                        )
+                    ]
                 )
-            ]
-        )
+                filter_key = "pdf_id"
+            else:
+                raise
         
-        print(f"🔍 Searching with filter for pdf_id: {pdf_id}")
+        print(f"🔍 Searching with filter for pdf_id: {pdf_id} (using key: {filter_key})")
         
         # Search with filter
         results = vector_db.similarity_search(
