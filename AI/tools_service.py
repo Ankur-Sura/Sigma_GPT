@@ -1161,52 +1161,36 @@ async def transcribe_audio(
 
 def fix_currency_symbols(text: str) -> str:
     """
-    📖 Fix Currency Symbols in OCR Output (IMPROVED VERSION)
-    --------------------------------------------------------
+    📖 Fix Currency Symbols in OCR Output (CONSERVATIVE VERSION)
+    ------------------------------------------------------------
     Post-processes OCR text to fix common symbol recognition errors.
     
     PROBLEM:
     --------
-    The Rupee symbol (₹) is often misread as "2", "Z", "7", or "?" by OCR.
+    The Rupee symbol (₹) is sometimes misread as "2" by OCR.
     
     SOLUTION:
     ---------
-    Replace misread characters with "₹" in CLEAR CURRENCY CONTEXTS.
+    ONLY replace "2" with "₹" in VERY CLEAR currency contexts.
+    Regular "2" numbers should stay as "2".
+    
+    ✅ WILL FIX: "Amount 2500.00" → "Amount ₹500.00" (has currency keyword)
+    ✅ WILL FIX: "Rs. 500" → "₹500" (has Rs. prefix)
+    ❌ WON'T CHANGE: "2 items" → stays "2 items"
+    ❌ WON'T CHANGE: "2024" → stays "2024"
+    ❌ WON'T CHANGE: "2500" alone → stays "2500"
     """
     import re
     
     # ==========================================================================
-    # PATTERN 0: Direct ₹ symbol variants that OCR might produce
+    # PATTERN 1: Normalize existing rupee symbol variants
     # ==========================================================================
-    # Sometimes OCR reads ₹ as special characters
-    text = re.sub(r'[₨₹]', '₹', text)  # Normalize rupee variants
+    text = re.sub(r'₨', '₹', text)  # Normalize rupee variants
     
     # ==========================================================================
-    # PATTERN 1: Currency keywords followed by "2" + digits
+    # PATTERN 2: Rs./Rs/RS followed by number → ₹
     # ==========================================================================
-    currency_keywords = r'(?:Up to|Upto|Limit|Amount|Price|Cost|Total|Balance|Pay|Paid|Fee|Charge|Cashback|Discount|Save|Saved|MRP|Rate|Value|Worth)\s*'
-    
-    # Match: keyword + 2 + 3+ digits with optional decimal
-    text = re.sub(
-        rf'({currency_keywords})2(\d{{2,}}(?:,\d{{2,3}})*(?:\.\d{{1,2}})?)\b',
-        r'\1₹\2',
-        text,
-        flags=re.IGNORECASE
-    )
-    
-    # ==========================================================================
-    # PATTERN 2: "2" + number with BOTH comma AND decimal (Indian currency format)
-    # ==========================================================================
-    # E.g., "21,234.56" → "₹1,234.56"
-    text = re.sub(
-        r'\b2(\d{1,2},\d{2,3}(?:,\d{2,3})*\.\d{1,2})\b',
-        r'₹\1',
-        text
-    )
-    
-    # ==========================================================================
-    # PATTERN 3: Rs./Rs/RS followed by number → ₹
-    # ==========================================================================
+    # This is the SAFEST pattern - "Rs." is clearly currency
     text = re.sub(
         r'\bRs\.?\s*(\d)',
         r'₹\1',
@@ -1215,7 +1199,7 @@ def fix_currency_symbols(text: str) -> str:
     )
     
     # ==========================================================================
-    # PATTERN 4: INR followed by number → ₹
+    # PATTERN 3: INR followed by number → ₹
     # ==========================================================================
     text = re.sub(
         r'\bINR\s*(\d)',
@@ -1225,43 +1209,28 @@ def fix_currency_symbols(text: str) -> str:
     )
     
     # ==========================================================================
-    # PATTERN 5: "2" followed by space then comma-formatted number
+    # PATTERN 4: Currency keywords + "2" + decimal number (MUST have decimal)
     # ==========================================================================
-    text = re.sub(
-        r'\b2\s+(\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?)\b',
-        r'₹\1',
-        text
-    )
+    # Only replace when there's a decimal point (strong currency indicator)
+    # E.g., "Amount 2500.00" → "Amount ₹500.00"
+    # But "Amount 2500" stays as "Amount 2500" (could be quantity)
+    currency_keywords = r'(?:Amount|Price|Cost|Total|Balance|Pay|Paid|Fee|Charge|Cashback|MRP|Rate)\s*'
     
-    # ==========================================================================
-    # PATTERN 6: "2" at start of line followed by digits (likely ₹)
-    # ==========================================================================
-    # E.g., line starting with "2500.00" → "₹500.00"
     text = re.sub(
-        r'^2(\d{2,}(?:,\d{2,3})*(?:\.\d{1,2})?)\b',
-        r'₹\1',
-        text,
-        flags=re.MULTILINE
-    )
-    
-    # ==========================================================================
-    # PATTERN 7: Common OCR mistakes for ₹ symbol
-    # ==========================================================================
-    # "Z" or "7" followed by digits in currency context
-    text = re.sub(
-        rf'({currency_keywords})[Z7](\d{{2,}}(?:,\d{{2,3}})*(?:\.\d{{1,2}})?)\b',
+        rf'({currency_keywords})2(\d{{2,}}(?:,\d{{2,3}})*\.\d{{2}})\b',
         r'\1₹\2',
         text,
         flags=re.IGNORECASE
     )
     
     # ==========================================================================
-    # PATTERN 8: Handle "2," pattern (₹ followed by comma-formatted number)
+    # PATTERN 5: "2" + comma-formatted number WITH decimal (Indian format)
     # ==========================================================================
-    # E.g., "2,500" → "₹2,500" when it looks like Indian currency
+    # E.g., "21,234.56" → "₹1,234.56" (comma + decimal = clearly money)
+    # But "21,234" stays (could be a count)
     text = re.sub(
-        r'\b2,(\d{2,3}(?:,\d{2,3})*(?:\.\d{1,2})?)\b',
-        r'₹2,\1',
+        r'\b2(\d{1,2},\d{2,3}(?:,\d{2,3})*\.\d{2})\b',
+        r'₹\1',
         text
     )
     
