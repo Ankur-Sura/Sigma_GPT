@@ -3244,17 +3244,29 @@ def run_smart_chat(
         city = _extract_city(query)
         if city:
             weather_data = get_weather(city)
-            # Format full weather details
+            # Format full weather details in a nice card format
             if weather_data.get("error"):
-                answer = f"**Weather in {city}:**\n\nUnable to fetch weather: {weather_data.get('error')}"
+                answer = f"**🌤️ Weather in {city}:**\n\n❌ Unable to fetch weather: {weather_data.get('error')}"
             else:
-                answer = f"""**Weather in {city}:**
+                condition = weather_data.get('weather', 'N/A')
+                temp_c = weather_data.get('temperature_c', 'N/A')
+                temp_f = weather_data.get('temperature_f', 'N/A')
+                feels_like = weather_data.get('feels_like_c', 'N/A')
+                humidity = weather_data.get('humidity', 'N/A')
+                wind = weather_data.get('wind_speed', 'N/A')
+                
+                answer = f"""## 🌤️ Weather in {city}
 
-🌡️ **Temperature:** {weather_data.get('temperature_c', 'N/A')}°C ({weather_data.get('temperature_f', 'N/A')}°F)
-🤔 **Feels Like:** {weather_data.get('feels_like_c', 'N/A')}°C
-☁️ **Condition:** {weather_data.get('weather', 'N/A')}
-💧 **Humidity:** {weather_data.get('humidity', 'N/A')}
-💨 **Wind Speed:** {weather_data.get('wind_speed', 'N/A')}"""
+| Parameter | Value |
+|-----------|-------|
+| 🌡️ **Temperature** | {temp_c}°C ({temp_f}°F) |
+| 🤔 **Feels Like** | {feels_like}°C |
+| ☁️ **Condition** | {condition} |
+| 💧 **Humidity** | {humidity} |
+| 💨 **Wind Speed** | {wind} |
+
+---
+*Data from wttr.in*"""
         else:
             # Use agent to figure out the city
             result = run_agent(query, session_id=thread_id)
