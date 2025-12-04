@@ -77,8 +77,8 @@ langchain-qdrant>=0.1.4,<1.0.0
 # Why: Stores and searches vectors in Qdrant
 # Used in: rag_service.py - QdrantVectorStore.from_documents(...)
 # 🔗 Your notes (04-RAG/indexing.py): QdrantVectorStore.from_documents(...)
-# 📌 IMPORTANT: Constrained to <1.0.0 - versions 1.x break compatibility with existing Qdrant data!
-# Using >=0.1.4,<1.0.0 allows pip to resolve compatible version with langchain>=0.3.0
+# 🚨 DO NOT CHANGE: MUST stay <1.0.0 - versions 1.x break compatibility with existing Qdrant data!
+# This constraint works with langchain>=0.3.0,<0.4.0 (see langchain constraint below)
 
 langchain-text-splitters>=0.3.0,<1.0.0
 # 📖 LangChain Text Splitters - For chunking documents
