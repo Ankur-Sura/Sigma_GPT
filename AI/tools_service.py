@@ -1313,8 +1313,8 @@ async def ocr_image(
     # Check if OCR dependencies are installed
     if not Image or not pytesseract:
         raise HTTPException(
-            status_code=500,
-            detail="OCR dependencies missing. Install pillow + pytesseract and ensure Tesseract is on PATH."
+            status_code=503,  # Service Unavailable (not user's fault)
+            detail="OCR service is currently unavailable. Tesseract OCR engine is not installed on the server. Please try again later or contact support."
         )
     
     try:
@@ -1387,7 +1387,13 @@ async def ocr_image(
     except HTTPException:
         raise
     except Exception as err:
-        raise HTTPException(status_code=500, detail=f"OCR failed: {err}")
+        # Provide helpful error message for common Tesseract issues
+        error_msg = str(err)
+        if "tesseract" in error_msg.lower() or "not found" in error_msg.lower():
+            detail = "OCR service unavailable: Tesseract OCR engine is not installed on the server. This feature requires system-level installation that is not available in this environment."
+        else:
+            detail = f"OCR failed: {error_msg}"
+        raise HTTPException(status_code=503, detail=detail)
 
 
 # =============================================================================

@@ -983,12 +983,15 @@ async def query_pdf(payload: dict):
         raise HTTPException(status_code=400, detail="Missing pdf_id or question")
     
     try:
-        # Connect to existing collection
-        vector_db = QdrantVectorStore.from_existing_collection(
-            url=QDRANT_URL,
-            collection_name=QDRANT_COLLECTION,
-            embedding=embedding_model
-        )
+        # Connect to existing collection (with API key for Qdrant Cloud)
+        connection_kwargs = {
+            "url": QDRANT_URL,
+            "collection_name": QDRANT_COLLECTION,
+            "embedding": embedding_model
+        }
+        if QDRANT_API_KEY:
+            connection_kwargs["api_key"] = QDRANT_API_KEY
+        vector_db = QdrantVectorStore.from_existing_collection(**connection_kwargs)
         
         # Create filter to search ONLY in this PDF
         # -----------------------------------------
