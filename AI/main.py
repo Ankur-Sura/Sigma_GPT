@@ -293,7 +293,8 @@ def main():
     - http://0.0.0.0:8000 (from other containers/devices)
     """
     # Get port from environment variable (for Render/Heroku) or default to 8000
-    port = int(os.getenv("PORT", 8000))
+    # os.getenv() always returns a string (or None), so default must be a string
+    port = int(os.getenv("PORT", "8000"))
     
     print("\n" + "=" * 60)
     print("🚀 Starting Sigma GPT AI Service...")
