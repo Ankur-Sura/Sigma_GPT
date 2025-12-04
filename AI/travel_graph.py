@@ -1148,6 +1148,22 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         {state.get('emergency_info', 'Not available')}
         """
         
+        # Extract actual URLs from search results for clickable links
+        mmt_urls = []
+        yatra_urls = []
+        
+        if isinstance(mmt_results, dict):
+            for r in mmt_results.get("results", []):
+                url = r.get("url", "")
+                if url and "makemytrip" in url.lower():
+                    mmt_urls.append(url)
+        
+        if isinstance(yatra_results, dict):
+            for r in yatra_results.get("results", []):
+                url = r.get("url", "")
+                if url and "yatra" in url.lower():
+                    yatra_urls.append(url)
+        
         # Use LLM to create final packages
         summary_prompt = f"""
         You are a travel agent creating 3 travel packages for a trip from {source} to {destination}.
@@ -1155,9 +1171,15 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         USER PREFERENCES:
         {json.dumps(preferences, indent=2)}
         
-        WEBSITE PACKAGES FOUND:
-        MakeMyTrip: {json.dumps(mmt_results, indent=2) if isinstance(mmt_results, dict) else mmt_results}
-        Yatra: {json.dumps(yatra_results, indent=2) if isinstance(yatra_results, dict) else yatra_results}
+        WEBSITE PACKAGES FOUND (with actual URLs!):
+        
+        📌 MakeMyTrip Results:
+        {json.dumps(mmt_results, indent=2) if isinstance(mmt_results, dict) else mmt_results}
+        Actual URLs found: {mmt_urls if mmt_urls else ['https://www.makemytrip.com/holidays/']}
+        
+        📌 Yatra Results:
+        {json.dumps(yatra_results, indent=2) if isinstance(yatra_results, dict) else yatra_results}
+        Actual URLs found: {yatra_urls if yatra_urls else ['https://www.yatra.com/holidays/']}
         
         ALL RESEARCH:
         {all_info}
@@ -1184,18 +1206,54 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         ═══════════════════════════════════════════════════════════════
         📦 PACKAGE 1: WEBSITE PACKAGE (MakeMyTrip)
         ═══════════════════════════════════════════════════════════════
-        - Flight + Hotel bundle details
-        - What's included
-        - Total price
-        - Booking link/instructions
+        
+        📊 **Source:** MakeMyTrip.com (Searched: "{mmt_query}")
+        
+        - **Details:** [Package name, inclusions from search results]
+        - **Includes:** Flight + Hotel at [specific hotel name]
+        - **Total Price:** ₹[price] for [X Days/Y Nights]
+        
+        📅 **DAILY ITINERARY:**
+        - **Day 1:** Arrival, Check-in, Evening exploration
+        - **Day 2:** [Main attraction/activity from activities info]
+        - **Day 3:** [Second major activity/beach/site]
+        - **Day 4:** Shopping, local cuisine, Departure
+        
+        🔗 **Booking Link:** [{mmt_urls[0] if mmt_urls else 'https://www.makemytrip.com/holidays/'}]({mmt_urls[0] if mmt_urls else 'https://www.makemytrip.com/holidays/'})
+        
+        ✅ **WHY RANK #1:** [Explain: Best value for money / Most inclusions / Trusted brand / Best reviews]
+        
+        ---
         
         ═══════════════════════════════════════════════════════════════
-        📦 PACKAGE 2: WEBSITE PACKAGE (Yatra/Alternative)
+        📦 PACKAGE 2: WEBSITE PACKAGE (Yatra)
         ═══════════════════════════════════════════════════════════════
-        - Alternative package details
-        - What's included
-        - Total price comparison
-        - Booking link/instructions
+        
+        📊 **Source:** Yatra.com (Searched: "{yatra_query}")
+        
+        - **Details:** [Package name from search results]
+        - **Includes:** Flight + Accommodation (various options)
+        - **Total Price:** ₹[price] for [X Days/Y Nights] (varies based on selection)
+        
+        📅 **DAILY ITINERARY:**
+        - **Day 1:** Arrival and check-in
+        - **Day 2:** [Major sightseeing]
+        - **Day 3:** [Adventure activities]
+        - **Day 4-5:** [Beach/relaxation/local exploration]
+        
+        🔗 **Booking Link:** [{yatra_urls[0] if yatra_urls else 'https://www.yatra.com/holidays/'}]({yatra_urls[0] if yatra_urls else 'https://www.yatra.com/holidays/'})
+        
+        🔄 **WHY RANK #2:** [Explain: Good alternative / Different hotel options / More flexibility / Slightly higher price but more customization]
+        
+        📊 **COMPARISON WITH PACKAGE 1:**
+        | Feature | MakeMyTrip | Yatra |
+        |---------|------------|-------|
+        | Price | ₹X | ₹Y |
+        | Hotel Rating | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+        | Inclusions | Flight+Hotel+Breakfast | Flight+Hotel |
+        | Flexibility | Fixed | Customizable |
+        
+        ---
         
         ═══════════════════════════════════════════════════════════════
         📦 PACKAGE 3: DIY SOLO PLAN (Personalized for User)
