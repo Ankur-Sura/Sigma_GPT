@@ -953,8 +953,7 @@ async def upload_pdf(file: UploadFile = File(...)):
                     
                     if images:
                         # Convert PIL image to bytes for OCR.space
-                        from io import BytesIO
-                        img_buffer = BytesIO()
+                        img_buffer = BytesIO()  # BytesIO already imported at top
                         images[0].save(img_buffer, format='PNG')
                         img_bytes = img_buffer.getvalue()
                         
