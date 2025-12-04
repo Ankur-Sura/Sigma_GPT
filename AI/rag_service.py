@@ -1056,6 +1056,9 @@ async def query_pdf(payload: dict):
         # Uses Qdrant's filtering capability
         # Try metadata.pdf_id first (LangChain's standard), fallback to pdf_id
         
+        filter_key = "metadata.pdf_id"  # Default to LangChain's standard path
+        qdrant_filter = None
+        
         try:
             # Try with metadata.pdf_id first (most common in LangChain)
             qdrant_filter = Filter(
@@ -1077,26 +1080,44 @@ async def query_pdf(payload: dict):
             # If metadata.pdf_id fails, try pdf_id directly
             if "index" in str(filter_err).lower() or "not found" in str(filter_err).lower():
                 print(f"ℹ️ metadata.pdf_id filter failed, trying pdf_id: {filter_err}")
-                qdrant_filter = Filter(
-                    must=[
-                        FieldCondition(
-                            key="pdf_id",
-                            match=MatchValue(value=pdf_id)
-                        )
-                    ]
-                )
-                filter_key = "pdf_id"
+                try:
+                    qdrant_filter = Filter(
+                        must=[
+                            FieldCondition(
+                                key="pdf_id",
+                                match=MatchValue(value=pdf_id)
+                            )
+                        ]
+                    )
+                    filter_key = "pdf_id"
+                except Exception as fallback_err:
+                    # If both fail, try without filter (search all PDFs)
+                    print(f"⚠️ Both filter paths failed, searching without filter: {fallback_err}")
+                    qdrant_filter = None
+                    filter_key = "none (no filter)"
             else:
                 raise
         
         print(f"🔍 Searching with filter for pdf_id: {pdf_id} (using key: {filter_key})")
         
-        # Search with filter
-        results = vector_db.similarity_search(
-            query=question,
-            k=8,  # Get more chunks for detailed answers
-            filter=qdrant_filter
-        )
+        # Search with filter (or without if filter creation failed)
+        if qdrant_filter:
+            results = vector_db.similarity_search(
+                query=question,
+                k=8,  # Get more chunks for detailed answers
+                filter=qdrant_filter
+            )
+        else:
+            # Fallback: search without filter, then filter results manually
+            all_results = vector_db.similarity_search(
+                query=question,
+                k=20  # Get more results to filter manually
+            )
+            # Filter by pdf_id in metadata
+            results = [
+                r for r in all_results 
+                if r.metadata.get("pdf_id") == pdf_id
+            ][:8]  # Limit to 8 results
         
         print(f"📊 Found {len(results)} results")
         
