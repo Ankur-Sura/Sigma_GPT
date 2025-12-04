@@ -34,26 +34,63 @@
     
     .inputBox {
         max-width: 100%;
-        padding: 8px 10px;
-        min-height: 60px;
-        gap: 8px;
+        padding: 6px 8px;
+        min-height: 56px;
+        gap: 4px; /* Reduced gap between elements */
+    }
+    
+    .inputToolbar {
+        gap: 4px; /* Tighter icon spacing on mobile */
+        flex-shrink: 0; /* Don't shrink icons */
     }
     
     .iconBtn {
-        width: 38px;
-        height: 38px;
-        font-size: 14px;
+        width: 32px; /* Smaller icons on mobile */
+        height: 32px;
+        font-size: 12px; /* Smaller icon size */
+        min-width: 32px; /* Prevent shrinking */
     }
     
     #submit {
-        width: 38px;
-        height: 38px;
-        font-size: 18px;
+        width: 36px; /* Slightly larger send button */
+        height: 36px;
+        font-size: 16px;
+        min-width: 36px;
+    }
+    
+    .micBtn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
     }
     
     input {
-        font-size: 0.95rem;
-        padding: 12px 8px;
+        font-size: 0.9rem;
+        padding: 10px 6px; /* Reduced padding for more space */
+        flex: 1; /* Take remaining space */
+        min-width: 0; /* Allow shrinking */
+    }
+    
+    .rightControls {
+        gap: 6px; /* Tighter spacing */
+        flex-shrink: 0; /* Don't shrink controls */
+    }
+    
+    /* Hide less-used icons on very small screens to save space */
+    @media (max-width: 400px) {
+        .inputToolbar button:nth-child(n+4) {
+            display: none; /* Hide stock, travel, solo trip icons on very small screens */
+        }
+        
+        .inputBox {
+            gap: 3px;
+            padding: 5px 6px;
+        }
+        
+        input {
+            padding: 8px 4px;
+            font-size: 0.85rem;
+        }
     }
     
     .uploadMenu {
