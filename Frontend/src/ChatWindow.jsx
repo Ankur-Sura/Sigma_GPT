@@ -452,22 +452,33 @@ function ChatWindow() {
 
         try {
             setImageUploading(true);
+            
+            // Show user that OCR is processing (might take time on first use)
+            setPrevChats(prev => [...prev, {role: "assistant", content: "🔄 Processing image... (First use may take 30-60 seconds as OCR engine loads)"}]);
+            
             // ═══════════════════════════════════════════════════════════════
             // 🔗 CONNECTION: FRONTEND → BACKEND → AI SERVICE
             // ═══════════════════════════════════════════════════════════════
-            // STEP 1: Frontend sends image to Backend (Node.js)
-            // STEP 2: Backend forwards to AI Service (Python FastAPI)
-            // STEP 3: AI Service: Preprocess → Tesseract OCR → Return text
-            // 
             // 📌 Backend endpoint: Backend/routes/tools.js → POST /image-ocr
             // 📌 AI endpoint: AI/tools_service.py → ocr_image()
             // ═══════════════════════════════════════════════════════════════
+            
+            // Add timeout for long OCR operations (2 minutes)
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 120000);
+            
             const response = await fetch(`${API_URL}/api/image-ocr`, {
                 method: "POST",
-                body: formData
+                body: formData,
+                signal: controller.signal
             });
+            
+            clearTimeout(timeout);
 
             const data = await response.json();
+            
+            // Remove the "processing" message
+            setPrevChats(prev => prev.filter(msg => !msg.content.includes("Processing image...")));
 
             if(!response.ok) {
                 const errMsg = typeof data?.error === "string"
@@ -496,7 +507,14 @@ function ChatWindow() {
             ]);
         } catch(err) {
             console.log(err);
-            setPrevChats(prev => [...prev, {role: "assistant", content: "Image OCR failed: network error"}]);
+            // Remove the "processing" message
+            setPrevChats(prev => prev.filter(msg => !msg.content.includes("Processing image...")));
+            
+            if(err.name === "AbortError") {
+                setPrevChats(prev => [...prev, {role: "assistant", content: "Image OCR timed out. The server might be busy. Please try again."}]);
+            } else {
+                setPrevChats(prev => [...prev, {role: "assistant", content: "Image OCR failed: network error. Please try again."}]);
+            }
         } finally {
             setImageUploading(false);
             if(imageInputRef.current) {
