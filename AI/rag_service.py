@@ -309,45 +309,104 @@ def fix_ocr_code_formatting(text: str) -> str:
     """
     Fix OCR output that concatenates words without spaces.
     Especially important for code where 'publicstaticvoid' should be 'public static void'
+    
+    Examples:
+    - publicstaticNoderightRotate → public static Node rightRotate
+    - returnroot → return root
+    - intgetBalance → int getBalance
     """
     import re
     
-    # Common Java/programming keywords that should be separated
+    # ==========================================================================
+    # STEP 1: Add spaces before/after Java keywords
+    # ==========================================================================
+    # Keywords that should ALWAYS have space before AND after
     keywords = [
-        'public', 'private', 'protected', 'static', 'void', 'int', 'String',
-        'boolean', 'return', 'if', 'else', 'while', 'for', 'class', 'new',
-        'null', 'true', 'false', 'this', 'super', 'extends', 'implements',
-        'import', 'package', 'throws', 'throw', 'try', 'catch', 'finally',
-        'abstract', 'final', 'synchronized', 'volatile', 'transient',
-        'interface', 'enum', 'break', 'continue', 'default', 'switch', 'case',
-        'Node', 'Math', 'System', 'args', 'main', 'print', 'println', 'out'
+        # Access modifiers
+        'public', 'private', 'protected',
+        # Other modifiers
+        'static', 'final', 'abstract', 'synchronized', 'volatile', 'transient',
+        # Types
+        'void', 'int', 'long', 'short', 'byte', 'float', 'double', 'boolean', 'char',
+        # Control flow
+        'if', 'else', 'while', 'for', 'do', 'switch', 'case', 'default', 'break', 'continue',
+        # Class/object
+        'class', 'interface', 'enum', 'extends', 'implements', 'new', 'this', 'super',
+        # Exception
+        'try', 'catch', 'finally', 'throw', 'throws',
+        # Other
+        'return', 'import', 'package', 'instanceof',
+        # Literals
+        'null', 'true', 'false',
+        # Common class names
+        'String', 'Integer', 'Boolean', 'Object', 'List', 'ArrayList', 'HashMap', 'Map',
+        'Node', 'Math', 'System', 'Arrays',
     ]
     
     # Sort by length (longest first) to avoid partial matches
-    keywords = sorted(keywords, key=len, reverse=True)
+    keywords = sorted(set(keywords), key=len, reverse=True)
     
-    # Build regex pattern to add spaces before keywords when they're stuck together
+    # Add space BEFORE keyword if preceded by letter/digit (not already space)
     for kw in keywords:
-        # Add space BEFORE keyword if preceded by lowercase letter or )
-        text = re.sub(rf'([a-z\)])({kw})(?=[A-Z\(\[])', rf'\1 \2', text)
-        # Add space AFTER keyword if followed by uppercase letter
-        text = re.sub(rf'({kw})([A-Z])', rf'\1 \2', text)
+        # Pattern: letter/digit immediately before keyword
+        text = re.sub(rf'([a-zA-Z0-9])({kw})\b', rf'\1 \2', text, flags=re.IGNORECASE)
+        # Pattern: keyword immediately followed by uppercase letter
+        text = re.sub(rf'\b({kw})([A-Z])', rf'\1 \2', text)
     
-    # Fix camelCase that got merged (e.g., "rightRotate" stays but "NodeT2" becomes "Node T2")
-    # Only split when there's a pattern like lowercase->uppercase->lowercase that looks like merged words
+    # ==========================================================================
+    # STEP 2: Fix specific stuck patterns
+    # ==========================================================================
+    
+    # Fix "returnroot" -> "return root"
+    text = re.sub(r'\breturn([a-z])', r'return \1', text)
+    
+    # Fix "elseif" -> "else if"
+    text = re.sub(r'\belse\s*if\b', 'else if', text)
+    
+    # Fix "){"  -> ") {"
+    text = re.sub(r'\)\{', ') {', text)
+    
+    # Fix "){" patterns
+    text = re.sub(r'\)\s*\{', ') {', text)
+    
+    # Fix "if(" -> "if ("
+    text = re.sub(r'\b(if|while|for|switch|catch)\(', r'\1 (', text)
+    
+    # ==========================================================================
+    # STEP 3: Fix operators without spaces
+    # ==========================================================================
+    
+    # Fix "x=y" -> "x = y" (but not == or !=)
+    text = re.sub(r'(\w)([+\-*/%]?=)(?!=)(\w)', r'\1 \2 \3', text)
+    
+    # Fix comparison operators: "x<y" -> "x < y"
+    text = re.sub(r'(\w)(<|>|<=|>=|==|!=)(\w)', r'\1 \2 \3', text)
+    
+    # Fix "x+y" -> "x + y"
+    text = re.sub(r'(\w)([+\-])(\w)', r'\1 \2 \3', text)
+    
+    # ==========================================================================
+    # STEP 4: Fix merged words (CamelCase that got stuck)
+    # ==========================================================================
+    
+    # Fix "NodeT2" -> "Node T2" (uppercase followed by uppercase+digit)
+    text = re.sub(r'([a-z])([A-Z][A-Z0-9])', r'\1 \2', text)
+    
+    # Fix general merged words: "heightMath" -> "height Math"
     text = re.sub(r'([a-z])([A-Z][a-z]{2,})', r'\1 \2', text)
     
-    # Fix common patterns like "root.data+" -> "root.data + "
-    text = re.sub(r'(\w)([+\-*/=<>!&|]{1,2})(\w)', r'\1 \2 \3', text)
+    # ==========================================================================
+    # STEP 5: Clean up
+    # ==========================================================================
     
-    # Fix "if(x)" -> "if (x)"
-    text = re.sub(r'\b(if|while|for|switch)\(', r'\1 (', text)
-    
-    # Fix "return x;" patterns that might be stuck
-    text = re.sub(r'return([A-Za-z])', r'return \1', text)
-    
-    # Clean up multiple spaces
+    # Fix multiple spaces
     text = re.sub(r'  +', ' ', text)
+    
+    # Fix spaces before punctuation
+    text = re.sub(r' +([;,\.\)])', r'\1', text)
+    
+    # Fix spaces after opening brackets
+    text = re.sub(r'([(\[]) +', r'\1', text)
     
     return text
 
@@ -1065,8 +1124,13 @@ async def upload_pdf(file: UploadFile = File(...)):
                     ocr_text = ""
             
             # ═══════════════════════════════════════════════════════════════
-            # STEP 2.5: Clean OCR text (fix word concatenation issues)
+            # STEP 2.5: Clean BOTH PDF text AND OCR text
             # ═══════════════════════════════════════════════════════════════
+            # PDF text can also have concatenation issues (publicstaticNode)
+            if pdf_text.strip():
+                pdf_text = clean_ocr_text(pdf_text)
+                print(f"🧹 Page {idx + 1}: Cleaned PDF text")
+            
             if ocr_text.strip():
                 ocr_text = clean_ocr_text(ocr_text)
                 print(f"🧹 Page {idx + 1}: Cleaned OCR text")

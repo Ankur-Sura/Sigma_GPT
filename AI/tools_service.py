@@ -1188,8 +1188,8 @@ async def transcribe_audio(
 
 def fix_currency_symbols(text: str) -> str:
     """
-    📖 Fix Currency Symbols in OCR Output (CONSERVATIVE VERSION)
-    ------------------------------------------------------------
+    📖 Fix Currency Symbols in OCR Output (ULTRA CONSERVATIVE VERSION)
+    ------------------------------------------------------------------
     Post-processes OCR text to fix common symbol recognition errors.
     
     PROBLEM:
@@ -1198,14 +1198,15 @@ def fix_currency_symbols(text: str) -> str:
     
     SOLUTION:
     ---------
-    ONLY replace "2" with "₹" in VERY CLEAR currency contexts.
-    Regular "2" numbers should stay as "2".
+    ONLY replace when there's an EXPLICIT "Rs." or "INR" prefix.
+    NEVER replace standalone "2" - it causes too many false positives.
     
-    ✅ WILL FIX: "Amount 2500.00" → "Amount ₹500.00" (has currency keyword)
-    ✅ WILL FIX: "Rs. 500" → "₹500" (has Rs. prefix)
+    ✅ WILL FIX: "Rs. 500" → "₹500"
+    ✅ WILL FIX: "Rs.500" → "₹500"
+    ✅ WILL FIX: "INR 500" → "₹500"
     ❌ WON'T CHANGE: "2 items" → stays "2 items"
-    ❌ WON'T CHANGE: "2024" → stays "2024"
-    ❌ WON'T CHANGE: "2500" alone → stays "2500"
+    ❌ WON'T CHANGE: "2500" → stays "2500"
+    ❌ WON'T CHANGE: "Amount 2500.00" → stays (no Rs./INR prefix)
     """
     import re
     
@@ -1217,7 +1218,7 @@ def fix_currency_symbols(text: str) -> str:
     # ==========================================================================
     # PATTERN 2: Rs./Rs/RS followed by number → ₹
     # ==========================================================================
-    # This is the SAFEST pattern - "Rs." is clearly currency
+    # This is the ONLY safe pattern - "Rs." is explicitly currency
     text = re.sub(
         r'\bRs\.?\s*(\d)',
         r'₹\1',
@@ -1235,31 +1236,8 @@ def fix_currency_symbols(text: str) -> str:
         flags=re.IGNORECASE
     )
     
-    # ==========================================================================
-    # PATTERN 4: Currency keywords + "2" + decimal number (MUST have decimal)
-    # ==========================================================================
-    # Only replace when there's a decimal point (strong currency indicator)
-    # E.g., "Amount 2500.00" → "Amount ₹500.00"
-    # But "Amount 2500" stays as "Amount 2500" (could be quantity)
-    currency_keywords = r'(?:Amount|Price|Cost|Total|Balance|Pay|Paid|Fee|Charge|Cashback|MRP|Rate)\s*'
-    
-    text = re.sub(
-        rf'({currency_keywords})2(\d{{2,}}(?:,\d{{2,3}})*\.\d{{2}})\b',
-        r'\1₹\2',
-        text,
-        flags=re.IGNORECASE
-    )
-    
-    # ==========================================================================
-    # PATTERN 5: "2" + comma-formatted number WITH decimal (Indian format)
-    # ==========================================================================
-    # E.g., "21,234.56" → "₹1,234.56" (comma + decimal = clearly money)
-    # But "21,234" stays (could be a count)
-    text = re.sub(
-        r'\b2(\d{1,2},\d{2,3}(?:,\d{2,3})*\.\d{2})\b',
-        r'₹\1',
-        text
-    )
+    # NO MORE PATTERNS - removed all "2" → "₹" conversions
+    # They were causing "2 items" → "₹ items" issues
     
     return text
 
