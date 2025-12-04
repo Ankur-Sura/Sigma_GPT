@@ -3125,7 +3125,17 @@ def run_smart_chat(
         city = _extract_city(query)
         if city:
             weather_data = get_weather(city)
-            answer = f"**Weather in {city}:**\n\n{weather_data.get('weather', 'Unable to fetch weather.')}"
+            # Format full weather details
+            if weather_data.get("error"):
+                answer = f"**Weather in {city}:**\n\nUnable to fetch weather: {weather_data.get('error')}"
+            else:
+                answer = f"""**Weather in {city}:**
+
+🌡️ **Temperature:** {weather_data.get('temperature_c', 'N/A')}°C ({weather_data.get('temperature_f', 'N/A')}°F)
+🤔 **Feels Like:** {weather_data.get('feels_like_c', 'N/A')}°C
+☁️ **Condition:** {weather_data.get('weather', 'N/A')}
+💧 **Humidity:** {weather_data.get('humidity', 'N/A')}
+💨 **Wind Speed:** {weather_data.get('wind_speed', 'N/A')}"""
         else:
             # Use agent to figure out the city
             result = run_agent(query, session_id=thread_id)
