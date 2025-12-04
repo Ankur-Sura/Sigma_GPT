@@ -71,13 +71,14 @@ langchain-openai>=0.3.6,<1.0.0
 # 🔗 Your notes (04-RAG/indexing.py): embedding_model = OpenAIEmbeddings(...)
 # 📌 IMPORTANT: Pinned to <1.0.0 for compatibility with langchain-qdrant 0.1.4
 
-langchain-qdrant==0.1.4
+langchain-qdrant>=0.1.4,<1.0.0
 # 📖 LangChain-Qdrant - LangChain integration with Qdrant vector DB
 # From: https://python.langchain.com/docs/integrations/vectorstores/qdrant
 # Why: Stores and searches vectors in Qdrant
 # Used in: rag_service.py - QdrantVectorStore.from_documents(...)
 # 🔗 Your notes (04-RAG/indexing.py): QdrantVectorStore.from_documents(...)
-# 📌 IMPORTANT: Pinned to 0.1.4 - newer versions (1.x) break compatibility with existing Qdrant data!
+# 📌 IMPORTANT: Constrained to <1.0.0 - versions 1.x break compatibility with existing Qdrant data!
+# Using >=0.1.4,<1.0.0 allows pip to resolve compatible version with langchain>=0.3.0
 
 langchain-text-splitters>=0.3.0,<1.0.0
 # 📖 LangChain Text Splitters - For chunking documents
@@ -86,12 +87,12 @@ langchain-text-splitters>=0.3.0,<1.0.0
 # Used in: rag_service.py - RecursiveCharacterTextSplitter(...)
 # 🔗 Your notes (04-RAG/indexing.py): RecursiveCharacterTextSplitter(...)
 
-langchain>=0.2.0,<0.3.0
+langchain>=0.3.0,<1.0.0
 # 📖 LangChain - Core LangChain package
 # From: https://python.langchain.com/
-# Why: Required by stock_graph.py for langchain.debug and langchain.verbose
-# Used in: stock_graph.py - import langchain
-# 📌 IMPORTANT: Constrained to <0.3.0 for compatibility with langchain-qdrant==0.1.4
+# Why: Required by stock_graph.py for langchain.globals.set_debug() and set_verbose()
+# Used in: stock_graph.py - from langchain.globals import set_debug, set_verbose
+# 📌 Note: langchain-qdrant will be resolved to a compatible version automatically
 
 langgraph>=0.2.0,<1.0.0
 # 📖 LangGraph - Build stateful, multi-actor applications with LLMs

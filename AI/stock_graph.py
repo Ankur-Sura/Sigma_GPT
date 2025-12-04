@@ -108,21 +108,31 @@ from typing import TypedDict, Annotated, List, Dict, Any, Optional
 from dotenv import load_dotenv
 load_dotenv()
 
-# ----- Fix LangChain Python 3.14 Compatibility -----
-# This fixes "module 'langchain' has no attribute 'debug'" error
-import langchain
-if not hasattr(langchain, 'debug'):
-    langchain.debug = False
-if not hasattr(langchain, 'verbose'):
-    langchain.verbose = False
+# ----- Configure LangChain Debug/Verbose Settings -----
+# Use the correct LangChain API for configuring debug and verbose modes
+try:
+    from langchain.globals import set_debug, set_verbose
+    set_debug(False)
+    set_verbose(False)
+except ImportError:
+    # Fallback for older LangChain versions (< 0.2.0)
+    try:
+        import langchain
+        if hasattr(langchain, 'globals'):
+            langchain.globals.set_debug(False)
+            langchain.globals.set_verbose(False)
+    except (ImportError, AttributeError):
+        # If all else fails, silently continue (debug/verbose are optional)
+        pass
 """
-📖 Why this fix?
-----------------
-Python 3.14 + LangChain has a compatibility issue.
-The 'debug' attribute is missing from the langchain module.
-We manually set it to prevent errors.
+📖 Why configure LangChain debug/verbose?
+------------------------------------------
+LangChain can output verbose debugging information which can clutter logs.
+We explicitly disable debug and verbose modes for cleaner production logs.
 
-This is a temporary workaround until LangChain fully supports Python 3.14.
+📌 Correct API Usage:
+- LangChain 0.2.0+: Use langchain.globals.set_debug() and set_verbose()
+- Older versions: May use different APIs (handled in fallback)
 """
 
 # ----- LangGraph Imports -----
