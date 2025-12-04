@@ -43,10 +43,20 @@ from langgraph.checkpoint.mongodb import MongoDBSaver
 # NOTE: We don't use ToolNode/tools_condition here
 # We use direct interrupt() calls for Human-in-the-Loop
 
-# OpenAI
+# ----- LangChain LLM (matches your notes!) -----
+from langchain.chat_models import init_chat_model
+"""
+📖 init_chat_model - MATCHES YOUR NOTES!
+-----------------------------------------
+🔗 In your notes (human-in-loop code):
+    from langchain.chat_models import init_chat_model
+    llm = init_chat_model(model_provider="openai", model="gpt-4.1")
+"""
+
+# OpenAI (kept for backward compatibility)
 from openai import OpenAI
 
-# Our tools
+# Our tools (now with @tool decorators!)
 from tools_service import smart_web_search, search_news, get_current_datetime
 
 # =============================================================================
@@ -54,6 +64,19 @@ from tools_service import smart_web_search, search_news, get_current_datetime
 # =============================================================================
 
 client = OpenAI()
+
+# ----- LangChain LLM (matches your notes!) -----
+llm = init_chat_model(model_provider="openai", model="gpt-4o-mini")
+"""
+📖 LangChain LLM - MATCHES YOUR NOTES!
+--------------------------------------
+🔗 In your notes (human-in-loop code):
+    llm = init_chat_model(model_provider="openai", model="gpt-4.1")
+
+We still keep client = OpenAI() for direct API calls,
+but llm is available for LangChain-style usage.
+"""
+
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 
 

@@ -76,7 +76,7 @@ from collections import defaultdict  # For conversation memory
 import requests       # For making HTTP requests (web search)
 import redis          # For Redis-based memory (optional)
 
-# ----- Import Tools from tools_service -----
+# ----- Import Tools from tools_service (now with @tool decorators!) -----
 from tools_service import (
     smart_web_search,
     indian_stock_search,
@@ -90,22 +90,37 @@ from tools_service import (
 📖 Importing Tools from tools_service.py
 -----------------------------------------
 We import the search tools we created so the agent can use them.
+These tools now have @tool decorators (like your notes!)
 
-🔗 In your notes (03-Agents/main.py):
-    available_tools = {
-        "get_weather": get_weather,
-        "run_command": run_command
-    }
+🔗 In your notes (human-in-loop code):
+    @tool
+    def human_assistance(query: str) -> str:
+        '''Request assistance from a human.'''
+        ...
+    
+    tools = [human_assistance]
 
-SAME PATTERN! We define tools in tools_service.py and import them here.
+SAME PATTERN! We define tools in tools_service.py with @tool and import them here.
 
-📌 TOOLS AVAILABLE:
-------------------
+📌 TOOLS AVAILABLE (all with @tool decorator):
+----------------------------------------------
 1. smart_web_search - General web search (Tavily + DuckDuckGo)
 2. indian_stock_search - Indian finance sites only
 3. get_weather - Current weather
 4. get_current_datetime - Current date/time
 5. search_news - News articles
+"""
+
+# ----- Create Tools List for ToolNode (matches your notes!) -----
+tools = [smart_web_search, indian_stock_search, get_weather, get_current_datetime, search_news]
+"""
+📖 Tools List for ToolNode
+--------------------------
+🔗 In your notes (human-in-loop code):
+    tools = [human_assistance]
+    tool_node = ToolNode(tools=tools)
+    
+Same pattern! We list all our @tool decorated functions.
 """
 
 # ----- Import LangGraph Stock Research Workflow -----
@@ -142,18 +157,68 @@ From the 'pymongo' library (pip install pymongo).
 ✔ Official Python driver for MongoDB
 ✔ We use it to save/load conversation state (checkpointing)
 ✔ This is how we persist memory across server restarts!
+"""
 
-🔗 In your notes (07-LangGraph/graph.py), you used:
+# ----- LangGraph Imports (matches your notes!) -----
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+from langgraph.types import interrupt, Command
+from typing import Annotated
+from typing_extensions import TypedDict as LangGraphTypedDict
+"""
+📖 LangGraph Imports - MATCHES YOUR NOTES!
+------------------------------------------
+
+🔗 In your notes (human-in-loop code):
+    from langgraph.prebuilt import ToolNode, tools_condition
+    from langchain_core.tools import tool
+    from langgraph.graph import StateGraph, START, END
     from langgraph.checkpoint.mongodb import MongoDBSaver
+    from langgraph.types import interrupt, Command
     
-We're implementing similar functionality using pymongo directly
-to avoid dependency conflicts with langchain-qdrant.
+MongoDBSaver: 
+    ✔ Saves/loads graph state to MongoDB
+    ✔ Use with context manager: with MongoDBSaver.from_conn_string() as checkpointer
+    
+ToolNode:
+    ✔ Automatically executes tools when LLM calls them
+    ✔ Works with tools decorated with @tool
+    
+tools_condition:
+    ✔ Conditional edge that checks if LLM wants to use a tool
+    ✔ Routes to tool_node or END based on LLM's response
+    
+interrupt:
+    ✔ Pauses graph execution for human input
+    ✔ State is saved to MongoDB
+    
+Command:
+    ✔ Used to resume graph with human response
+    ✔ Command(resume={"data": human_response})
 """
 
 # ----- FastAPI Imports -----
 from fastapi import APIRouter, HTTPException
 
-# ----- OpenAI Import -----
+# ----- LangChain Imports (matches your notes!) -----
+from langchain.chat_models import init_chat_model
+"""
+📖 What is init_chat_model?
+---------------------------
+From langchain.chat_models library.
+
+✔ Creates a chat model in a provider-agnostic way
+✔ Works with OpenAI, Anthropic, etc.
+✔ Can bind tools with .bind_tools()
+
+🔗 In your notes (human-in-loop code):
+    llm = init_chat_model(model_provider="openai", model="gpt-4.1")
+    llm_with_tools = llm.bind_tools(tools=tools)
+"""
+
+# ----- OpenAI Import (direct client for backward compatibility) -----
 from openai import OpenAI
 """
 📖 What is OpenAI client?
@@ -195,6 +260,53 @@ client = OpenAI()
 
 🔗 In your notes (03-Agents/main.py):
     client = OpenAI()
+"""
+
+# ----- LangChain LLM (matches your notes!) -----
+llm = init_chat_model(model_provider="openai", model="gpt-4o-mini")
+"""
+📖 Creating LangChain LLM
+-------------------------
+This creates a LangChain-compatible LLM that can:
+✔ Bind tools with .bind_tools()
+✔ Work with ToolNode
+✔ Support streaming
+
+🔗 In your notes (human-in-loop code):
+    llm = init_chat_model(model_provider="openai", model="gpt-4.1")
+    llm_with_tools = llm.bind_tools(tools=tools)
+
+📌 We use gpt-4o-mini for cost efficiency. Change to gpt-4.1 if needed.
+"""
+
+# ----- Bind Tools to LLM (EXACTLY like your notes!) -----
+llm_with_tools = llm.bind_tools(tools=tools)
+"""
+📖 LLM with Tools Bound
+-----------------------
+🔗 In your notes (human-in-loop code):
+    llm_with_tools = llm.bind_tools(tools=tools)
+    
+This enables the LLM to:
+✔ Know what tools are available
+✔ Generate tool calls in its response
+✔ Work with ToolNode for automatic execution
+"""
+
+# ----- Create ToolNode (EXACTLY like your notes!) -----
+tool_node = ToolNode(tools=tools)
+"""
+📖 ToolNode for Automatic Tool Execution
+----------------------------------------
+🔗 In your notes (human-in-loop code):
+    tool_node = ToolNode(tools=tools)
+    graph_builder.add_node("tools", tool_node)
+    graph_builder.add_conditional_edges("chatbot", tools_condition)
+    
+ToolNode:
+✔ Automatically executes tools when LLM requests them
+✔ Handles the tool call → result → back to LLM flow
+✔ Works with tools_condition for routing
 """
 
 # =============================================================================

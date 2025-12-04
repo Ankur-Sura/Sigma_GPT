@@ -160,10 +160,20 @@ add_messages: A "reducer" function
 SAME IMPORTS!
 """
 
-# ----- OpenAI Import -----
+# ----- LangChain LLM (matches your notes!) -----
+from langchain.chat_models import init_chat_model
+"""
+📖 init_chat_model - MATCHES YOUR NOTES!
+-----------------------------------------
+🔗 In your notes (human-in-loop code):
+    from langchain.chat_models import init_chat_model
+    llm = init_chat_model(model_provider="openai", model="gpt-4.1")
+"""
+
+# ----- OpenAI Import (for direct API calls) -----
 from openai import OpenAI
 """
-📖 We use OpenAI directly (not LangChain) for simplicity
+📖 We use OpenAI directly for some functions
     - More control over the API calls
     - Easier to understand what's happening
     - Same as your notes (03-Agents/main.py)

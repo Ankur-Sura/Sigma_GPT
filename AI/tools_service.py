@@ -169,6 +169,26 @@ From the 'duckduckgo-search' library (pip install duckduckgo-search).
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
 from typing import Optional
 
+# ----- LangChain Tool Decorator (matches your notes!) -----
+from langchain_core.tools import tool
+"""
+📖 What is @tool decorator?
+---------------------------
+From langchain_core.tools library.
+
+✔ Converts a function into a LangGraph-compatible tool
+✔ Works with ToolNode and tools_condition
+✔ Can still be called directly: get_weather("Mumbai")
+
+🔗 In your notes (human-in-loop code):
+    from langchain_core.tools import tool
+    
+    @tool
+    def human_assistance(query: str) -> str:
+        '''Request assistance from a human.'''
+        ...
+"""
+
 # ----- OpenAI Import (for Whisper STT) -----
 from openai import OpenAI
 """
@@ -681,12 +701,19 @@ def duckduckgo_search(query: str, max_results: int = 5) -> Dict[str, Any]:
 #                     🆕 UNIFIED WEB SEARCH (Smart Fallback)
 # =============================================================================
 
+@tool
 def smart_web_search(query: str, max_results: int = 5) -> Dict[str, Any]:
-    """
-    📖 Smart Web Search - Uses Best Available Tool
-    ===============================================
+    """Search the web for current information on any topic.
     
-    Tries Tavily → Exa.ai → DuckDuckGo (3-tier fallback).
+    Use this tool when you need real-time information, news, or facts
+    that might not be in your training data.
+    
+    Args:
+        query: The search query (e.g., "latest AI news", "Bitcoin price today")
+        max_results: Number of results to return (default 5)
+    
+    Returns:
+        Dict with search results including titles, snippets, and URLs
     
     📌 THE FALLBACK STRATEGY:
     ------------------------
@@ -731,22 +758,24 @@ def smart_web_search(query: str, max_results: int = 5) -> Dict[str, Any]:
 #                     🆕 INDIAN STOCK NEWS SEARCH
 # =============================================================================
 
+@tool
 def indian_stock_search(
     query: str, 
     max_results: int = 5,
     include_quarterly: bool = True
 ) -> Dict[str, Any]:
-    """
-    📖 Indian Stock Market Search - Specialized Tool
-    ================================================
+    """Search Indian stock market websites for financial information.
     
-    Searches ONLY trusted Indian financial websites for stock information.
+    Use this tool for queries about Indian stocks, companies, quarterly results,
+    and financial news from trusted sources like MoneyControl, Screener, Economic Times.
     
-    Parameters:
-    -----------
-    query: Stock name or topic (e.g., "Tata Motors quarterly results")
-    max_results: Number of results
-    include_quarterly: If True, adds "quarterly results" to search
+    Args:
+        query: Stock name or topic (e.g., "Tata Motors quarterly results")
+        max_results: Number of results to return
+        include_quarterly: If True, adds "quarterly results" to search
+    
+    Returns:
+        Dict with search results from Indian financial websites
     
     Returns:
     --------
@@ -804,20 +833,18 @@ def indian_stock_search(
 #                     🆕 WEATHER TOOL
 # =============================================================================
 
+@tool
 def get_weather(city: str) -> Dict[str, Any]:
-    """
-    📖 Weather Tool - Get Current Weather
-    =====================================
+    """Get current weather for any city.
     
-    Gets current weather for any city using wttr.in (free, no API key).
+    Use this tool when user asks about weather, temperature, or climate conditions.
     
-    Parameters:
-    -----------
-    city: City name (e.g., "Mumbai", "New York", "London")
+    Args:
+        city: City name (e.g., "Mumbai", "New York", "London")
     
     Returns:
-    --------
-    Dict with: city, weather, temperature, feels_like, humidity
+        Dict with weather details: city, weather condition, temperature,
+        feels_like, humidity, wind_speed
     
     📌 WHY wttr.in?
     --------------
@@ -877,12 +904,15 @@ def get_weather(city: str) -> Dict[str, Any]:
 #                     🆕 DATE/TIME TOOL
 # =============================================================================
 
+@tool
 def get_current_datetime() -> Dict[str, Any]:
-    """
-    📖 Date/Time Tool - Get Current Date and Time
-    ==============================================
+    """Get current date and time.
     
-    Returns the current date and time in various formats.
+    Use this tool when you need to know the current date, time, or day of week.
+    LLMs don't know the current date - their training has a cutoff.
+    
+    Returns:
+        Dict with: date, time, day_of_week, iso_format, timestamp
     
     📌 WHY THIS IS NEEDED:
     ---------------------
@@ -928,17 +958,19 @@ def get_current_datetime() -> Dict[str, Any]:
 #                     🆕 NEWS SEARCH TOOL
 # =============================================================================
 
+@tool
 def search_news(query: str, max_results: int = 5) -> Dict[str, Any]:
-    """
-    📖 News Search Tool - Get Latest News
-    =====================================
+    """Search for recent news articles on any topic.
     
-    Searches for recent news articles on any topic.
+    Use this tool for current events, breaking news, or recent developments.
+    Returns news articles from news sources, not general web pages.
     
-    Parameters:
-    -----------
-    query: Topic to search (e.g., "AI technology", "Indian economy")
-    max_results: Number of news articles to return
+    Args:
+        query: Topic to search (e.g., "AI technology", "Indian economy")
+        max_results: Number of news articles to return
+    
+    Returns:
+        Dict with news articles including headlines, snippets, and URLs
     
     📌 HOW IT DIFFERS FROM REGULAR SEARCH:
     -------------------------------------
