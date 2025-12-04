@@ -121,15 +121,18 @@
 .history li {
     list-style-type: none;
     cursor: pointer;
-    padding: 6px 10px; /* slightly more horizontal padding for alignment */
+    padding: 8px 10px; /* 🆕 Slightly more padding for better spacing */
     margin-bottom: 0.45rem; /* smaller gap between items */
     font-size: 14px; /* history text size */
-    border: solid 10px transparent; /* space for icons */
+    padding-right: 80px; /* 🆕 Space for edit and delete icons */
     position: relative;
     border-radius: 10px; /* rounded item */
     color: var(--text); /* item text */
     transition: all 0.2s ease; /* smooth transitions */
     border-left: 3px solid transparent; /* space for hover indicator */
+    min-height: 36px; /* 🆕 Ensure consistent height for icon alignment */
+    display: flex;
+    align-items: center; /* 🆕 Vertically center content */
 }
 
 .historyTitle {
@@ -186,7 +189,11 @@
 .fa-trash {
     opacity: 0;
     position: absolute;
-    right: 0;
+    right: 8px; /* 🆕 Slightly adjust position */
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3; /* 🆕 Ensure delete is above edit */
+    transition: all 0.2s ease;
 }
 
 .history li:hover .fa-trash {
@@ -194,23 +201,38 @@
     color: var(--text);
 }
 
+/* 🆕 Show delete icon on mobile */
+@media (max-width: 767px) {
+    .fa-trash {
+        opacity: 1; /* Always visible on mobile */
+    }
+}
+
 .fa-trash:hover {
     color: #f87171 !important; /* warning tone on delete hover */
 }
 
 .edit-icon {
-    opacity: 0;
+    opacity: 1; /* 🆕 Always visible when showEditIcons is true */
     position: absolute;
-    right: 20px;
+    right: 40px; /* 🆕 Move further left to avoid blocking delete button */
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2; /* 🆕 Ensure it's above other elements */
+    transition: all 0.2s ease;
 }
 
-.history li:hover .edit-icon {
-    opacity: 1;
-    color: var(--text);
+/* 🆕 Show edit icon on mobile even when hidden on desktop */
+@media (max-width: 767px) {
+    .edit-icon {
+        opacity: 1;
+        right: 35px; /* Slightly different position on mobile */
+    }
 }
 
 .edit-icon:hover {
     color: var(--accent) !important; /* accent on edit hover */
+    transform: translateY(-50%) scale(1.1); /* 🆕 Slight scale on hover */
 }
 
 .highlighted {

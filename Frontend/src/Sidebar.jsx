@@ -67,6 +67,16 @@ function Sidebar() {
     
     const [sidebarOpen, setSidebarOpen] = useState(false);
     // 🆕 Mobile: Sidebar open/closed state
+    
+    const [showEditIcons, setShowEditIcons] = useState(() => {
+        // 🆕 Show edit icons by default on mobile, hide on desktop
+        if (typeof window === "undefined") return false;
+        const stored = localStorage.getItem("show_edit_icons");
+        if (stored !== null) return stored === "true";
+        // Default: hide on desktop, show on mobile
+        return window.innerWidth <= 767;
+    });
+    // 🆕 Toggle to show/hide edit icons in chat history
 
     const navigate = useNavigate();
     // 📖 React Router hook for navigation
@@ -120,6 +130,11 @@ function Sidebar() {
         getAllThreads();
     }, [])
     // 📖 Fetch on component mount
+    
+    useEffect(() => {
+        // 🆕 Persist edit icons preference
+        localStorage.setItem("show_edit_icons", showEditIcons.toString());
+    }, [showEditIcons])
 
 
     // =========================================================================
@@ -245,23 +260,25 @@ function Sidebar() {
                                 deleteThread(thread.threadId);
                                 }}
                             ></i>
-                            <i className="fa-solid fa-pen edit-icon"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const newName = prompt("Rename chat", thread.title || "Untitled");
-                                    if(!newName) return;
-                                    fetch(`${API_URL}/api/thread/${thread.threadId}?user_id=${encodeURIComponent(userId || "default")}`, {
-                                        method: "PATCH",
-                                        headers: {"Content-Type": "application/json"},
-                                        body: JSON.stringify({title: newName})
-                                    })
-                                    .then(res => res.json())
-                                    .then(() => {
-                                        setAllThreads(prev => prev.map(t => t.threadId === thread.threadId ? {...t, title: capitalizeTitle(newName)} : t));
-                                    })
-                                    .catch(err => console.log(err));
-                                }}
-                            ></i>
+                            {showEditIcons && (
+                                <i className="fa-solid fa-pen edit-icon"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newName = prompt("Rename chat", thread.title || "Untitled");
+                                        if(!newName) return;
+                                        fetch(`${API_URL}/api/thread/${thread.threadId}?user_id=${encodeURIComponent(userId || "default")}`, {
+                                            method: "PATCH",
+                                            headers: {"Content-Type": "application/json"},
+                                            body: JSON.stringify({title: newName})
+                                        })
+                                        .then(res => res.json())
+                                        .then(() => {
+                                            setAllThreads(prev => prev.map(t => t.threadId === thread.threadId ? {...t, title: capitalizeTitle(newName)} : t));
+                                        })
+                                        .catch(err => console.log(err));
+                                    }}
+                                ></i>
+                            )}
                         </li>
                         );
                     })
@@ -295,6 +312,20 @@ function Sidebar() {
                         </div>
                         <div className="aboutItem linkItem" onClick={() => {navigate("/plans"); setAboutOpen(false);}}>
                             <i className="fa-solid fa-cloud-arrow-up"></i> Upgrade plan
+                        </div>
+                        <div className="aboutItem">
+                            <div className="themeCopy">
+                                <span className="label">Show Edit Icons</span>
+                                <span className="sub">{showEditIcons ? "Visible" : "Hidden"}</span>
+                            </div>
+                            <label className="toggleSwitch" title="Toggle edit icons">
+                                <input 
+                                    type="checkbox" 
+                                    checked={showEditIcons} 
+                                    onChange={() => setShowEditIcons(prev => !prev)} 
+                                />
+                                <span className="sliderSwitch"></span>
+                            </label>
                         </div>
                     </div>
                 )
