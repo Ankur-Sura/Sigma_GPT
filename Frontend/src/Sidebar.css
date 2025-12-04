@@ -64,7 +64,8 @@
     }
 }
 
-.sidebar button {
+/* 🆕 Main "New Chat" button - use specific class to avoid conflicts */
+.sidebar > button:not(.mobile-menu-toggle) {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -76,6 +77,9 @@
     cursor: pointer;
     color: var(--text);
     transition: border-color 0.2s ease, background 0.2s ease;
+    width: calc(100% - 24px); /* 🆕 Full width minus margins */
+    position: relative; /* 🆕 Ensure proper stacking */
+    z-index: 1; /* 🆕 Below mobile toggle */
 }
 
 .logo {
@@ -102,7 +106,7 @@
     font-size: 18px; /* icon size on CTA */
 }
 
-.sidebar button:hover {
+.sidebar > button:not(.mobile-menu-toggle):hover {
     background-color: rgba(255, 255, 255, 0.06); /* hover wash */
     border-color: var(--accent); /* accent on hover */
 }
@@ -372,33 +376,42 @@
     background: rgba(124, 231, 196, 0.15); /* accent hover for links */
 }
 
-/* 🆕 Mobile Menu Toggle Button (inside sidebar) */
+/* 🆕 Mobile Menu Toggle Button (inside sidebar) - Close button when open */
 .mobile-menu-toggle {
     display: none; /* Hidden on desktop */
     position: absolute;
     top: 12px;
     right: 12px;
     background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    width: 40px;
-    height: 40px;
+    border: 1px solid var(--border) !important; /* 🆕 Override button border */
+    border-radius: 10px !important; /* 🆕 Override button border-radius */
+    width: 40px !important; /* 🆕 Fixed width */
+    min-width: 40px !important;
+    max-width: 40px !important;
+    height: 40px !important; /* 🆕 Fixed height */
+    padding: 0 !important; /* 🆕 No padding */
+    margin: 0 !important; /* 🆕 No margin - use absolute positioning */
     color: var(--text);
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    z-index: 1001;
+    z-index: 1002; /* 🆕 Above new chat button */
     transition: all 0.2s ease;
 }
 
 .mobile-menu-toggle:hover {
     background: rgba(255, 255, 255, 0.15);
-    border-color: var(--accent);
+    border-color: var(--accent) !important;
     color: var(--accent);
 }
 
 @media (max-width: 767px) {
     .mobile-menu-toggle {
         display: flex;
+    }
+    
+    /* 🆕 Adjust main button on mobile to avoid overlap */
+    .sidebar > button:not(.mobile-menu-toggle) {
+        margin-top: 60px; /* 🆕 Push down below mobile toggle */
     }
 }

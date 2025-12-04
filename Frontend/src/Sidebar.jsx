@@ -107,17 +107,28 @@ function Sidebar() {
     const getAllThreads = async () => {
         // 📖 Fetch all chat threads from backend (filtered by user_id)
         try {
+            console.log(`🔍 Fetching threads from: ${API_URL}/api/thread?user_id=${userId || "default"}`);
             const response = await fetch(`${API_URL}/api/thread?user_id=${encodeURIComponent(userId || "default")}`);
-            const res = await response.json();
             
-            const filteredData = res
-                .filter(thread => thread.threadId !== "global-shared")
+            if (!response.ok) {
+                console.error(`❌ Failed to fetch threads: ${response.status} ${response.statusText}`);
+                return;
+            }
+            
+            const res = await response.json();
+            console.log(`✅ Received ${res?.length || 0} threads`);
+            
+            // Handle both array and non-array responses
+            const threads = Array.isArray(res) ? res : [];
+            
+            const filteredData = threads
+                .filter(thread => thread && thread.threadId !== "global-shared")
                 // 📖 Hide internal global memory thread from UI
                 .map(thread => ({threadId: thread.threadId, title: capitalizeTitle(thread.title)}));
             
             setAllThreads(filteredData);
         } catch(err) {
-            console.log(err);
+            console.error("❌ Error fetching threads:", err);
         }
     };
 

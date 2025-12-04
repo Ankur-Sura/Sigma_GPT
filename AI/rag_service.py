@@ -1021,6 +1021,16 @@ async def query_pdf(payload: dict):
         
         qdrant_client = QdrantClient(**qdrant_client_kwargs)
         
+        # 🆕 Check if collection exists first (FIXED: use proper None comparison)
+        try:
+            collections = qdrant_client.get_collections()
+            collection_names = [c.name for c in collections.collections] if collections is not None else []
+            if QDRANT_COLLECTION not in collection_names:
+                print(f"⚠️ Collection '{QDRANT_COLLECTION}' does not exist. Please upload a PDF first.")
+                return {"answer": "No PDFs have been uploaded yet. Please upload a PDF first before querying."}
+        except Exception as col_err:
+            print(f"⚠️ Error checking collections: {col_err}")
+        
         # Try to create index if it doesn't exist (idempotent)
         # Try both possible paths: "metadata.pdf_id" and "pdf_id"
         index_paths = ["metadata.pdf_id", "pdf_id"]
