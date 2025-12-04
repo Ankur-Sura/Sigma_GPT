@@ -881,14 +881,36 @@ def get_weather(city: str) -> Dict[str, Any]:
         data = response.json()
         current = data.get("current_condition", [{}])[0]
         
+        condition = current.get("weatherDesc", [{}])[0].get("value", "Unknown")
+        temp_c = current.get("temp_C", "N/A")
+        temp_f = current.get("temp_F", "N/A")
+        feels_like = current.get("FeelsLikeC", "N/A")
+        humidity = current.get("humidity", "N/A") + "%"
+        wind = current.get("windspeedKmph", "N/A") + " km/h"
+        
+        # Pre-formatted output for consistent display
+        formatted = f"""## 🌤️ Weather in {city}
+
+| Parameter | Value |
+|-----------|-------|
+| 🌡️ **Temperature** | {temp_c}°C ({temp_f}°F) |
+| 🤔 **Feels Like** | {feels_like}°C |
+| ☁️ **Condition** | {condition} |
+| 💧 **Humidity** | {humidity} |
+| 💨 **Wind Speed** | {wind} |
+
+---
+*Data from wttr.in*"""
+        
         return {
             "city": city,
-            "weather": current.get("weatherDesc", [{}])[0].get("value", "Unknown"),
-            "temperature_c": current.get("temp_C", "N/A"),
-            "temperature_f": current.get("temp_F", "N/A"),
-            "feels_like_c": current.get("FeelsLikeC", "N/A"),
-            "humidity": current.get("humidity", "N/A") + "%",
-            "wind_speed": current.get("windspeedKmph", "N/A") + " km/h",
+            "weather": condition,
+            "temperature_c": temp_c,
+            "temperature_f": temp_f,
+            "feels_like_c": feels_like,
+            "humidity": humidity,
+            "wind_speed": wind,
+            "formatted": formatted,  # Pre-formatted for display
             "source": "wttr.in",
             "fetched_at": datetime.utcnow().isoformat() + "Z"
         }
@@ -1777,7 +1799,8 @@ def indian_stock_tool(query: str) -> str:
 def weather_tool(city: str) -> str:
     """Get current weather for any city."""
     result = get_weather(city)
-    return str(result)
+    # Return pre-formatted output for nice display
+    return result.get("formatted", str(result))
 
 @tool
 def datetime_tool() -> str:
