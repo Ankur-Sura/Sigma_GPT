@@ -261,20 +261,53 @@ except Exception:
     Image = None
 
 # EasyOCR - Pure Python OCR (works on Render!)
-try:
-    import easyocr
-    _pdf_easyocr_reader = None
-    def get_pdf_easyocr_reader():
-        global _pdf_easyocr_reader
-        if _pdf_easyocr_reader is None:
-            print("🔤 Initializing EasyOCR for PDF processing...")
+# 🆕 FULLY LAZY LOADING - Don't import at startup to avoid blocking server start
+_pdf_easyocr_reader = None
+_pdf_easyocr_available = None  # None = not checked yet
+
+def get_pdf_easyocr_reader():
+    """Lazy load EasyOCR only when first needed for PDF processing"""
+    global _pdf_easyocr_reader, _pdf_easyocr_available
+    
+    # First time check
+    if _pdf_easyocr_available is None:
+        try:
+            import easyocr
+            _pdf_easyocr_available = True
+        except Exception as e:
+            print(f"⚠️ EasyOCR not available for PDFs: {e}")
+            _pdf_easyocr_available = False
+            return None
+    
+    if not _pdf_easyocr_available:
+        return None
+    
+    # Initialize reader on first use
+    if _pdf_easyocr_reader is None:
+        try:
+            import easyocr
+            print("🔤 Initializing EasyOCR for PDF processing (may take 30-60 seconds)...")
             _pdf_easyocr_reader = easyocr.Reader(['en'], gpu=False)
             print("✅ EasyOCR initialized for PDFs")
-        return _pdf_easyocr_reader
-except Exception:
-    easyocr = None
-    def get_pdf_easyocr_reader():
-        return None
+        except Exception as e:
+            print(f"⚠️ EasyOCR initialization failed for PDFs: {e}")
+            _pdf_easyocr_available = False
+            return None
+    
+    return _pdf_easyocr_reader
+
+def is_pdf_easyocr_available():
+    global _pdf_easyocr_available
+    if _pdf_easyocr_available is None:
+        try:
+            import easyocr
+            _pdf_easyocr_available = True
+        except:
+            _pdf_easyocr_available = False
+    return _pdf_easyocr_available
+
+# Variable for compatibility
+easyocr = None  # Will be imported lazily
 
 # Tesseract - Fallback (requires system install)
 try:
@@ -902,7 +935,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         full_text_parts = []
         
         # Check which OCR engines are available
-        easyocr_available = easyocr is not None
+        easyocr_available = is_pdf_easyocr_available()
         tesseract_available = pytesseract is not None and convert_from_bytes is not None
         ocr_available = easyocr_available or tesseract_available
         

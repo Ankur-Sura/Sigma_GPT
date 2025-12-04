@@ -196,22 +196,52 @@ except Exception:
     np = None
 
 # EasyOCR - Pure Python OCR (works on Render free tier!)
-try:
-    import easyocr
-    # Initialize EasyOCR reader (lazy loading)
-    _easyocr_reader = None
-    def get_easyocr_reader():
-        global _easyocr_reader
-        if _easyocr_reader is None:
-            print("🔤 Initializing EasyOCR (first use)...")
+# 🆕 FULLY LAZY LOADING - Don't import at startup to avoid blocking server start
+_easyocr_reader = None
+_easyocr_available = None  # None = not checked yet
+
+def get_easyocr_reader():
+    """Lazy load EasyOCR only when first needed"""
+    global _easyocr_reader, _easyocr_available
+    
+    # First time check
+    if _easyocr_available is None:
+        try:
+            import easyocr
+            _easyocr_available = True
+            print("✅ EasyOCR module available")
+        except Exception as e:
+            print(f"⚠️ EasyOCR not available: {e}")
+            _easyocr_available = False
+            return None
+    
+    if not _easyocr_available:
+        return None
+    
+    # Initialize reader on first use
+    if _easyocr_reader is None:
+        try:
+            import easyocr
+            print("🔤 Initializing EasyOCR (first use, may take 30-60 seconds)...")
             _easyocr_reader = easyocr.Reader(['en'], gpu=False)  # CPU mode for Render
             print("✅ EasyOCR initialized")
-        return _easyocr_reader
-except Exception as e:
-    print(f"⚠️ EasyOCR not available: {e}")
-    easyocr = None
-    def get_easyocr_reader():
-        return None
+        except Exception as e:
+            print(f"⚠️ EasyOCR initialization failed: {e}")
+            _easyocr_available = False
+            return None
+    
+    return _easyocr_reader
+
+# For checking if easyocr is available without initializing
+def is_easyocr_available():
+    global _easyocr_available
+    if _easyocr_available is None:
+        try:
+            import easyocr
+            _easyocr_available = True
+        except:
+            _easyocr_available = False
+    return _easyocr_available
 
 # Tesseract - Fallback OCR (requires system install)
 try:
@@ -1342,7 +1372,7 @@ async def ocr_image(
         )
     
     # Check if we have ANY OCR engine available
-    easyocr_available = easyocr is not None
+    easyocr_available = is_easyocr_available()
     tesseract_available = pytesseract is not None
     
     if not easyocr_available and not tesseract_available:
