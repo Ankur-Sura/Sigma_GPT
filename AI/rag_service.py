@@ -1549,7 +1549,56 @@ async def query_pdf(payload: dict):
                 role = "User" if msg["role"] == "user" else "Assistant"
                 history_text += f"{role}: {msg['content'][:500]}...\n\n"
         
-        # Generate answer
+        # ================================================================
+        # 🆕 SMART DETECTION: Is this question about the PDF?
+        # ================================================================
+        # Check if the question seems unrelated to the PDF content
+        # If unrelated, tell user to use regular chat instead
+        
+        # First, let the LLM decide if it can answer from context
+        relevance_check_prompt = f"""
+        You are checking if a question can be answered using the given PDF context.
+        
+        PDF Context (first 1000 chars):
+        {context[:1000]}
+        
+        Question: {question}
+        
+        Can this question be answered using the PDF context above?
+        Reply with ONLY one word: "YES" or "NO"
+        
+        - If the question is about the PDF content, topics in the PDF, or asks to explain/summarize something from the PDF → YES
+        - If the question is completely unrelated (like weather, stocks, news, general knowledge) → NO
+        """
+        
+        relevance_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": relevance_check_prompt}],
+            max_tokens=10
+        )
+        
+        is_related = "YES" in relevance_response.choices[0].message.content.upper()
+        
+        if not is_related:
+            # Question is not about the PDF - provide helpful response
+            print(f"ℹ️ Question '{question}' is not related to PDF content")
+            answer = f"""This question doesn't seem to be related to the uploaded PDF.
+
+**Your question:** "{question}"
+
+📌 **To answer this question:**
+- Go back to the main chat (click "New Chat" or close the PDF viewer)
+- Ask your question there using the Smart AI feature
+
+📄 **For PDF-related questions, try asking:**
+- "What is this PDF about?"
+- "Summarize the main points"
+- "Explain [specific topic from the PDF]"
+"""
+            _save_rag_conversation(thread_id, pdf_id, question, answer)
+            return {"answer": answer, "thread_id": thread_id, "not_pdf_related": True}
+        
+        # Generate answer (question IS related to PDF)
         system_prompt = f"""
             {SYSTEM_PROMPT}
             
