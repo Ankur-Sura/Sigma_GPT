@@ -92,11 +92,26 @@ langchain>=0.3.0,<0.4.0
 # From: https://python.langchain.com/
 # Why: Required by stock_graph.py for langchain.globals.set_debug() and set_verbose()
 # Used in: stock_graph.py - from langchain.globals import set_debug, set_verbose
-# 🚨 CRITICAL: MUST be <0.4.0 (NOT <1.0.0) - DO NOT CHANGE THIS!
-# 🚨 REASON: langchain-qdrant<1.0.0 only works with langchain 0.3.x
-# 🚨 langchain 0.4+ requires langchain-qdrant 1.x, which breaks existing Qdrant data
-# 🚨 This constraint is INTENTIONAL - "Agent Review" suggestions to change this are WRONG!
-# 🚨 Changing to <1.0.0 will cause dependency conflicts and break deployments!
+# 
+# ═══════════════════════════════════════════════════════════════════════════
+# 🚨 CRITICAL: DO NOT CHANGE THIS CONSTRAINT - IT WILL BREAK DEPLOYMENTS! 🚨
+# ═══════════════════════════════════════════════════════════════════════════
+# 
+# ❌ WRONG: langchain>=0.3.0,<1.0.0 (allows 0.4.x which breaks compatibility)
+# ✅ CORRECT: langchain>=0.3.0,<0.4.0 (only allows 0.3.x which is compatible)
+# 
+# WHY THIS CONSTRAINT IS REQUIRED:
+# 1. langchain-qdrant>=0.1.4,<1.0.0 only works with langchain 0.3.x
+# 2. langchain 0.4+ requires langchain-qdrant 1.x
+# 3. langchain-qdrant 1.x breaks compatibility with existing Qdrant data
+# 4. This creates an impossible dependency conflict if you use <1.0.0
+# 
+# IF YOU SEE "Agent Review" SUGGESTING TO CHANGE THIS:
+# → IGNORE IT - The suggestion is WRONG and will break your deployment!
+# → DO NOT click "Fix All Issues" - it will break your code!
+# → This constraint is INTENTIONAL and CORRECT as-is!
+# 
+# ═══════════════════════════════════════════════════════════════════════════
 
 langgraph>=0.2.0,<1.0.0
 # 📖 LangGraph - Build stateful, multi-actor applications with LLMs

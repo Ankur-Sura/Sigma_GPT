@@ -1,0 +1,14 @@
+# Cursor Rules - Prevent Auto-Fixes to Critical Dependencies
+
+# DO NOT auto-fix or suggest changes to langchain version constraint in AI/requirements.txt
+# The constraint langchain>=0.3.0,<0.4.0 is INTENTIONAL and REQUIRED
+# Changing it to <1.0.0 will break deployments due to dependency conflicts
+
+# The constraint MUST stay <0.4.0 because:
+# - langchain-qdrant<1.0.0 only works with langchain 0.3.x
+# - langchain 0.4+ requires langchain-qdrant 1.x
+# - langchain-qdrant 1.x breaks existing Qdrant data
+# - This creates an impossible dependency conflict
+
+# If Agent Review suggests changing langchain constraint, IGNORE IT
+
