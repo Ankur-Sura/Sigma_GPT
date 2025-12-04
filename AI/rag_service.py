@@ -1148,12 +1148,12 @@ async def upload_pdf(file: UploadFile = File(...)):
                 try:
                     print(f"🔍 Page {idx + 1}: Running OCR to capture image text...")
                     
-                    # Convert PDF page to image at HIGHER DPI for better OCR
+                    # Convert PDF page to image at HIGH DPI for better OCR
                     images = convert_from_bytes(
                         content,
                         first_page=idx + 1,
                         last_page=idx + 1,
-                        dpi=300  # Increased from 200 for better OCR accuracy
+                        dpi=500  # High DPI for maximum OCR accuracy (67% increase from 300)
                     )
                     
                     if images:
