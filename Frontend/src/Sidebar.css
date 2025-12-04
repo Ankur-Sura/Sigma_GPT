@@ -191,18 +191,17 @@
 }
 
 .fa-trash {
-    opacity: 0.6; /* Always visible but subtle */
+    opacity: 0; /* Hidden by default */
     position: absolute;
     right: 8px;
     top: 50%;
     transform: translateY(-50%);
     z-index: 3;
     transition: all 0.2s ease;
-    color: var(--muted);
 }
 
 .history li:hover .fa-trash {
-    opacity: 1;
+    opacity: 1; /* Show on hover */
     color: var(--text);
 }
 
@@ -211,18 +210,17 @@
 }
 
 .edit-icon {
-    opacity: 0.6; /* Always visible but subtle */
+    opacity: 0; /* Hidden by default */
     position: absolute;
     right: 35px;
     top: 50%;
     transform: translateY(-50%);
     z-index: 2;
     transition: all 0.2s ease;
-    color: var(--muted);
 }
 
 .history li:hover .edit-icon {
-    opacity: 1;
+    opacity: 1; /* Show on hover */
     color: var(--text);
 }
 
