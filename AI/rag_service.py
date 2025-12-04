@@ -334,6 +334,15 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 ✔ Set in .env file: QDRANT_API_KEY=your-api-key-here
 """
 
+# 🆕 Debug: Print Qdrant configuration at startup
+print("=" * 60)
+print("📊 RAG Service Configuration:")
+print(f"   QDRANT_URL: {QDRANT_URL}")
+print(f"   QDRANT_COLLECTION: {QDRANT_COLLECTION}")
+print(f"   QDRANT_API_KEY: {'✅ Set' if QDRANT_API_KEY else '❌ NOT SET'}")
+print(f"   OPENAI_API_KEY: {'✅ Set' if os.getenv('OPENAI_API_KEY') else '❌ NOT SET'}")
+print("=" * 60)
+
 # =============================================================================
 #                     CREATE OPENAI CLIENT
 # =============================================================================
@@ -901,6 +910,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         #     )
         
         print(f"📤 Uploading {len(docs)} chunks with pdf_id: {pdf_id}")
+        print(f"   → Target: {QDRANT_URL} / collection: {QDRANT_COLLECTION}")
+        print(f"   → API Key: {'✅ Set' if QDRANT_API_KEY else '❌ NOT SET (using localhost?)'}")
         
         if docs:
             # 🆕 Ensure collection exists with proper payload schema for filtering
@@ -909,11 +920,18 @@ async def upload_pdf(file: UploadFile = File(...)):
             if QDRANT_API_KEY:
                 qdrant_client_kwargs["api_key"] = QDRANT_API_KEY
             
-            qdrant_client = QdrantClient(**qdrant_client_kwargs)
+            try:
+                print(f"🔌 Connecting to Qdrant at {QDRANT_URL}...")
+                qdrant_client = QdrantClient(**qdrant_client_kwargs)
+                print(f"✅ Connected to Qdrant")
+            except Exception as conn_err:
+                print(f"❌ Failed to connect to Qdrant: {conn_err}")
+                raise HTTPException(status_code=500, detail=f"Failed to connect to Qdrant: {conn_err}")
             
             # Check if collection exists, create with payload schema if needed
             try:
                 collection_info = qdrant_client.get_collection(QDRANT_COLLECTION)
+                print(f"✅ Collection '{QDRANT_COLLECTION}' exists")
                 # Collection exists, check if payload schema has pdf_id index
                 payload_schema = collection_info.config.params.payload_schema
                 # Try to create index for both possible paths
@@ -931,7 +949,7 @@ async def upload_pdf(file: UploadFile = File(...)):
             except Exception as e:
                 # Collection doesn't exist or error accessing it
                 # LangChain will create it with from_documents
-                print(f"ℹ️ Collection setup: {e}")
+                print(f"ℹ️ Collection '{QDRANT_COLLECTION}' doesn't exist yet, will be created")
             
             # Build connection kwargs for from_documents
             doc_connection_kwargs = {
@@ -945,8 +963,13 @@ async def upload_pdf(file: UploadFile = File(...)):
             if QDRANT_API_KEY:
                 doc_connection_kwargs["api_key"] = QDRANT_API_KEY
             
-            QdrantVectorStore.from_documents(**doc_connection_kwargs)
-            print(f"✅ Successfully stored {len(docs)} chunks in Qdrant")
+            print(f"📦 Creating embeddings and storing {len(docs)} chunks...")
+            try:
+                QdrantVectorStore.from_documents(**doc_connection_kwargs)
+                print(f"✅ Successfully stored {len(docs)} chunks in Qdrant")
+            except Exception as embed_err:
+                print(f"❌ Failed to store chunks in Qdrant: {embed_err}")
+                raise HTTPException(status_code=500, detail=f"Failed to store in Qdrant: {embed_err}")
         
         # Step 5: Return Success Response
         return {
