@@ -92,8 +92,8 @@ const featureList = [
 ];
 
 function Features() {
-  // First 4 cards expanded by default for interview
-  const [expandedCards, setExpandedCards] = useState([0, 1, 2, 3]);
+  // First 3 cards expanded by default (one full row for symmetry)
+  const [expandedCards, setExpandedCards] = useState([0, 1, 2]);
 
   const toggleCard = (index) => {
     setExpandedCards(prev => 
