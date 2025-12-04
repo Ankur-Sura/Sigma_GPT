@@ -816,24 +816,63 @@ router.post("/smart-chat", async (req, res) => {
         //
         // 📌 AI endpoint: AI/agent_service.py → run_smart_chat()
         // =================================================================
-        const response = await fetch(`${AI_SERVICE_URL}/agent/smart-chat`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                query,
-                thread_id: thread_id || "default",
-                user_id: user_id || "default",
-                force_tool: force_tool || null
-            })
-        });
         
-        const data = await response.json();
+        // 🆕 Retry logic for cold start handling
+        const maxRetries = 2;
+        let lastError = null;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`🔄 Smart chat attempt ${attempt}/${maxRetries}`);
+                
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+                
+                const response = await fetch(`${AI_SERVICE_URL}/agent/smart-chat`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        query,
+                        thread_id: thread_id || "default",
+                        user_id: user_id || "default",
+                        force_tool: force_tool || null
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeout);
+                
+                const data = await response.json();
 
-        if(!response.ok) {
-            return res.status(response.status).json({error: data.detail || "Smart chat failed"});
+                if(!response.ok) {
+                    return res.status(response.status).json({error: data.detail || "Smart chat failed"});
+                }
+                
+                // Success - continue with the rest of the function
+                var smartData = data;
+                break;
+                
+            } catch (fetchErr) {
+                lastError = fetchErr;
+                console.log(`⚠️ Attempt ${attempt} failed: ${fetchErr.message}`);
+                
+                if (attempt < maxRetries) {
+                    console.log(`⏳ Waiting 3s before retry...`);
+                    await new Promise(r => setTimeout(r, 3000));
+                }
+            }
         }
+        
+        if (!smartData) {
+            console.log(`❌ All ${maxRetries} attempts failed`);
+            return res.status(503).json({
+                error: "AI service temporarily unavailable. Please try again in a few seconds."
+            });
+        }
+        
+        const data = smartData;
 
         // =================================================================
         // Persist Smart Chat Result to MongoDB
