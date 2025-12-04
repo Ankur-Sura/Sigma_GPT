@@ -1389,8 +1389,8 @@ async def ocr_image(
     except Exception as err:
         # Provide helpful error message for common Tesseract issues
         error_msg = str(err)
-        if "tesseract" in error_msg.lower() or "not found" in error_msg.lower():
-            detail = "OCR service unavailable: Tesseract OCR engine is not installed on the server. This feature requires system-level installation that is not available in this environment."
+        if "tesseract" in error_msg.lower() or "not found" in error_msg.lower() or "not installed" in error_msg.lower():
+            detail = "OCR service unavailable: Tesseract OCR engine is not installed on the server. This feature requires system-level installation that is not available in this environment. Please use text-based PDFs or contact support for OCR capabilities."
         else:
             detail = f"OCR failed: {error_msg}"
         raise HTTPException(status_code=503, detail=detail)

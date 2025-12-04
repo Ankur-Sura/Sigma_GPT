@@ -220,7 +220,8 @@ From langchain_core library.
 When we split a PDF, each chunk becomes a Document object.
 """
 
-from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue, PayloadSchemaType
+from qdrant_client import QdrantClient
 """
 📖 What are these Qdrant filter classes?
 ----------------------------------------
@@ -902,6 +903,35 @@ async def upload_pdf(file: UploadFile = File(...)):
         print(f"📤 Uploading {len(docs)} chunks with pdf_id: {pdf_id}")
         
         if docs:
+            # 🆕 Ensure collection exists with proper payload schema for filtering
+            # This creates the index on metadata.pdf_id if it doesn't exist
+            qdrant_client_kwargs = {"url": QDRANT_URL}
+            if QDRANT_API_KEY:
+                qdrant_client_kwargs["api_key"] = QDRANT_API_KEY
+            
+            qdrant_client = QdrantClient(**qdrant_client_kwargs)
+            
+            # Check if collection exists, create with payload schema if needed
+            try:
+                collection_info = qdrant_client.get_collection(QDRANT_COLLECTION)
+                # Collection exists, check if payload schema has pdf_id index
+                payload_schema = collection_info.config.params.payload_schema
+                if payload_schema and "metadata" in payload_schema:
+                    metadata_schema = payload_schema.get("metadata", {})
+                    if "pdf_id" not in metadata_schema:
+                        # Add pdf_id index to existing collection
+                        print("🔧 Adding pdf_id index to existing collection...")
+                        qdrant_client.create_payload_index(
+                            collection_name=QDRANT_COLLECTION,
+                            field_name="metadata.pdf_id",
+                            field_schema=PayloadSchemaType.KEYWORD
+                        )
+                        print("✅ Added pdf_id index")
+            except Exception as e:
+                # Collection doesn't exist or error accessing it
+                # LangChain will create it with from_documents
+                print(f"ℹ️ Collection setup: {e}")
+            
             # Build connection kwargs for from_documents
             doc_connection_kwargs = {
                 "documents": docs,
@@ -983,6 +1013,26 @@ async def query_pdf(payload: dict):
         raise HTTPException(status_code=400, detail="Missing pdf_id or question")
     
     try:
+        # 🆕 Ensure collection has pdf_id index before querying
+        qdrant_client_kwargs = {"url": QDRANT_URL}
+        if QDRANT_API_KEY:
+            qdrant_client_kwargs["api_key"] = QDRANT_API_KEY
+        
+        qdrant_client = QdrantClient(**qdrant_client_kwargs)
+        
+        # Try to create index if it doesn't exist (idempotent)
+        try:
+            qdrant_client.create_payload_index(
+                collection_name=QDRANT_COLLECTION,
+                field_name="metadata.pdf_id",
+                field_schema=PayloadSchemaType.KEYWORD
+            )
+            print("✅ Ensured pdf_id index exists")
+        except Exception as idx_err:
+            # Index might already exist, that's fine
+            if "already exists" not in str(idx_err).lower():
+                print(f"ℹ️ Index check: {idx_err}")
+        
         # Connect to existing collection (with API key for Qdrant Cloud)
         connection_kwargs = {
             "url": QDRANT_URL,
