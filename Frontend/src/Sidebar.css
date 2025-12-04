@@ -191,13 +191,14 @@
 }
 
 .fa-trash {
-    opacity: 0;
+    opacity: 0.6; /* Always visible but subtle */
     position: absolute;
-    right: 8px; /* 🆕 Slightly adjust position */
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 3; /* 🆕 Ensure delete is above edit */
+    z-index: 3;
     transition: all 0.2s ease;
+    color: var(--muted);
 }
 
 .history li:hover .fa-trash {
@@ -205,33 +206,24 @@
     color: var(--text);
 }
 
-/* 🆕 Show delete icon on mobile */
-@media (max-width: 767px) {
-    .fa-trash {
-        opacity: 1; /* Always visible on mobile */
-    }
-}
-
 .fa-trash:hover {
     color: #f87171 !important; /* warning tone on delete hover */
 }
 
 .edit-icon {
-    opacity: 1; /* 🆕 Always visible when showEditIcons is true */
+    opacity: 0.6; /* Always visible but subtle */
     position: absolute;
-    right: 40px; /* 🆕 Move further left to avoid blocking delete button */
+    right: 35px;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 2; /* 🆕 Ensure it's above other elements */
+    z-index: 2;
     transition: all 0.2s ease;
+    color: var(--muted);
 }
 
-/* 🆕 Show edit icon on mobile even when hidden on desktop */
-@media (max-width: 767px) {
-    .edit-icon {
-        opacity: 1;
-        right: 35px; /* Slightly different position on mobile */
-    }
+.history li:hover .edit-icon {
+    opacity: 1;
+    color: var(--text);
 }
 
 .edit-icon:hover {
