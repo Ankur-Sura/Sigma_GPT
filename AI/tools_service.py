@@ -1192,6 +1192,8 @@ def fix_currency_symbols(text: str) -> str:
     ------------------------------------------------------------------
     Post-processes OCR text to fix common symbol recognition errors.
     
+    ⚠️ CRITICAL: This function does NOT and should NEVER convert standalone "2" to "₹"!
+    
     PROBLEM:
     --------
     The Rupee symbol (₹) is sometimes misread as "2" by OCR.
@@ -1199,26 +1201,33 @@ def fix_currency_symbols(text: str) -> str:
     SOLUTION:
     ---------
     ONLY replace when there's an EXPLICIT "Rs." or "INR" prefix.
-    NEVER replace standalone "2" - it causes too many false positives.
+    NEVER replace standalone "2" - it causes "2 items" → "₹ items" bugs!
     
     ✅ WILL FIX: "Rs. 500" → "₹500"
     ✅ WILL FIX: "Rs.500" → "₹500"
     ✅ WILL FIX: "INR 500" → "₹500"
+    ✅ WILL FIX: "₨500" → "₹500" (normalize rupee variant)
     ❌ WON'T CHANGE: "2 items" → stays "2 items"
     ❌ WON'T CHANGE: "2500" → stays "2500"
-    ❌ WON'T CHANGE: "Amount 2500.00" → stays (no Rs./INR prefix)
+    ❌ WON'T CHANGE: "Amount 2500.00" → stays "Amount 2500.00" (no Rs./INR prefix)
+    ❌ WON'T CHANGE: "Page 2" → stays "Page 2"
     """
     import re
     
-    # ==========================================================================
-    # PATTERN 1: Normalize existing rupee symbol variants
-    # ==========================================================================
-    text = re.sub(r'₨', '₹', text)  # Normalize rupee variants
+    if not text:
+        return text
     
     # ==========================================================================
-    # PATTERN 2: Rs./Rs/RS followed by number → ₹
+    # PATTERN 1: Normalize existing rupee symbol variants ONLY
     # ==========================================================================
-    # This is the ONLY safe pattern - "Rs." is explicitly currency
+    # ₨ (U+20A8) is another rupee sign - convert to standard ₹ (U+20B9)
+    text = re.sub(r'₨', '₹', text)
+    
+    # ==========================================================================
+    # PATTERN 2: "Rs." or "Rs" followed by number → ₹ + number
+    # ==========================================================================
+    # This is safe because "Rs." explicitly means Rupees
+    # Examples: "Rs. 500" → "₹500", "Rs500" → "₹500"
     text = re.sub(
         r'\bRs\.?\s*(\d)',
         r'₹\1',
@@ -1227,8 +1236,10 @@ def fix_currency_symbols(text: str) -> str:
     )
     
     # ==========================================================================
-    # PATTERN 3: INR followed by number → ₹
+    # PATTERN 3: "INR" followed by number → ₹ + number
     # ==========================================================================
+    # This is safe because "INR" explicitly means Indian Rupees
+    # Examples: "INR 500" → "₹500", "INR500" → "₹500"
     text = re.sub(
         r'\bINR\s*(\d)',
         r'₹\1',
@@ -1236,8 +1247,16 @@ def fix_currency_symbols(text: str) -> str:
         flags=re.IGNORECASE
     )
     
-    # NO MORE PATTERNS - removed all "2" → "₹" conversions
-    # They were causing "2 items" → "₹ items" issues
+    # ==========================================================================
+    # ⚠️ NO OTHER PATTERNS! DO NOT ADD ANY "2" → "₹" CONVERSION!
+    # ==========================================================================
+    # Previous bugs:
+    # - "2 items" became "₹ items" ❌
+    # - "Page 2" became "Page ₹" ❌
+    # - "2024" became "₹024" ❌
+    #
+    # If OCR misreads ₹ as "2", the user will see "2" which is better than
+    # having all their numbers broken!
     
     return text
 

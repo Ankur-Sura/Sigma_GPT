@@ -970,18 +970,21 @@ def start_solo_trip(query: str, thread_id: str = "solo_trip_1") -> Dict[str, Any
         state = graph.get_state(config)
         
         if state.next:  # If there's a next node, we're interrupted
-            # Extract state values - result is the state dict from last event
-            state_data = result if result else {}
+            # 🔧 FIX: Use state.values from get_state(), NOT result from stream!
+            # The stream result doesn't always contain the full state after interrupt
+            state_data = state.values if state.values else {}
+            
+            print(f"📍 Interrupt state - Origin: {state_data.get('origin')}, Dest: {state_data.get('destination')}, Distance: {state_data.get('distance_km')}")
+            
             return {
                 "status": "awaiting_input",
                 "thread_id": thread_id,
                 "interrupt_data": {
-                    **state_data,  # Include all state fields
-                    "origin": state_data.get("origin"),
-                    "destination": state_data.get("destination"),
-                    "distance_km": state_data.get("distance_km"),
-                    "destination_info": state_data.get("destination_info"),
-                    "transport_options": state_data.get("transport_options"),
+                    "origin": state_data.get("origin", "Unknown"),
+                    "destination": state_data.get("destination", "Unknown"),
+                    "distance_km": state_data.get("distance_km", 0),
+                    "destination_info": state_data.get("destination_info", ""),
+                    "transport_options": state_data.get("transport_options", ""),
                     "human_questions": state_data.get("human_questions")
                 },
                 "message": "Please provide your travel preferences to continue."

@@ -278,7 +278,9 @@ def ocr_space_for_pdf(image_bytes: bytes) -> str:
             'base64Image': f'data:image/png;base64,{base64_image}',
             'language': 'eng',
             'isOverlayRequired': False,
-            'OCREngine': 2
+            'detectOrientation': True,
+            'scale': True,
+            'OCREngine': 2  # Engine 2 better for most images
         }
         
         response = requests.post(
@@ -294,7 +296,10 @@ def ocr_space_for_pdf(image_bytes: bytes) -> str:
         
         parsed_results = result.get('ParsedResults', [])
         if parsed_results:
-            return parsed_results[0].get('ParsedText', '').strip()
+            text = parsed_results[0].get('ParsedText', '').strip()
+            # 🔧 NO currency symbol conversion here - let text stay as-is
+            # The issue with "2" → "₹" caused problems before
+            return text
         
         return ""
     except Exception as e:
@@ -1137,26 +1142,38 @@ async def upload_pdf(file: UploadFile = File(...)):
             
             # ═══════════════════════════════════════════════════════════════
             # STEP 3: Combine PDF text + OCR text (capture everything!)
+            # IMPROVED: Always prefer PDF text (cleaner), use OCR only to supplement
             # ═══════════════════════════════════════════════════════════════
             combined_text = ""
             
             if pdf_text and ocr_text:
-                # Both have text - combine them, avoid duplicates
-                # If OCR text is much longer, it probably captured more (use it)
-                # If they're similar length, prefer PDF text (cleaner)
-                if len(ocr_text) > len(pdf_text) * 1.5:
-                    combined_text = ocr_text
-                    print(f"📝 Page {idx + 1}: Using OCR text (more complete)")
+                # Both have text - ALWAYS prefer PDF text (it's cleaner, no concat issues)
+                # Only use OCR to add content that PDF missed (like text in images)
+                combined_text = pdf_text
+                
+                # Check if OCR found significantly more content (indicates images with text)
+                # Add unique OCR content that PDF missed
+                ocr_lines = [line.strip() for line in ocr_text.split('\n') if line.strip()]
+                pdf_lower = pdf_text.lower()
+                added_from_ocr = []
+                
+                for line in ocr_lines:
+                    # Only add lines that are:
+                    # 1. Not already in PDF text
+                    # 2. Long enough to be meaningful (>15 chars)
+                    # 3. Not just numbers or symbols
+                    line_clean = line.strip()
+                    if (line_clean.lower() not in pdf_lower 
+                        and len(line_clean) > 15 
+                        and any(c.isalpha() for c in line_clean)):
+                        added_from_ocr.append(line_clean)
+                
+                if added_from_ocr:
+                    combined_text += "\n\n--- Additional content from images ---\n"
+                    combined_text += "\n".join(added_from_ocr)
+                    print(f"📝 Page {idx + 1}: PDF text + {len(added_from_ocr)} lines from OCR (images)")
                 else:
-                    # Combine both - PDF text first, then unique OCR content
-                    combined_text = pdf_text
-                    # Add OCR text that's not already in PDF text (simple dedup)
-                    ocr_lines = [line.strip() for line in ocr_text.split('\n') if line.strip()]
-                    pdf_lower = pdf_text.lower()
-                    for line in ocr_lines:
-                        if line.lower() not in pdf_lower and len(line) > 10:
-                            combined_text += f"\n{line}"
-                    print(f"📝 Page {idx + 1}: Combined PDF + OCR text")
+                    print(f"📝 Page {idx + 1}: Using PDF text (OCR didn't find new content)")
             elif pdf_text:
                 combined_text = pdf_text
                 print(f"📝 Page {idx + 1}: Using PDF text only")
