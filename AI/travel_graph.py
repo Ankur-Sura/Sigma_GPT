@@ -1219,7 +1219,7 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         - **Day 3:** [Second major activity/beach/site]
         - **Day 4:** Shopping, local cuisine, Departure
         
-        🔗 **Booking Link:** [{mmt_urls[0] if mmt_urls else 'https://www.makemytrip.com/holidays/'}]({mmt_urls[0] if mmt_urls else 'https://www.makemytrip.com/holidays/'})
+        🔗 **Booking Link:** [Book on MakeMyTrip]({mmt_urls[0] if mmt_urls else 'https://www.makemytrip.com/holidays/'})
         
         ✅ **WHY RANK #1:** [Explain: Best value for money / Most inclusions / Trusted brand / Best reviews]
         
@@ -1241,7 +1241,7 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         - **Day 3:** [Adventure activities]
         - **Day 4-5:** [Beach/relaxation/local exploration]
         
-        🔗 **Booking Link:** [{yatra_urls[0] if yatra_urls else 'https://www.yatra.com/holidays/'}]({yatra_urls[0] if yatra_urls else 'https://www.yatra.com/holidays/'})
+        🔗 **Booking Link:** [Book on Yatra]({yatra_urls[0] if yatra_urls else 'https://www.yatra.com/holidays/'})
         
         🔄 **WHY RANK #2:** [Explain: Good alternative / Different hotel options / More flexibility / Slightly higher price but more customization]
         

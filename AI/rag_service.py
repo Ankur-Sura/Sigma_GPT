@@ -1142,44 +1142,78 @@ async def upload_pdf(file: UploadFile = File(...)):
             
             # ═══════════════════════════════════════════════════════════════
             # STEP 3: Combine PDF text + OCR text (capture everything!)
-            # IMPROVED: Always prefer PDF text (cleaner), use OCR only to supplement
+            # IMPROVED: Better handling for pages with text + code images
             # ═══════════════════════════════════════════════════════════════
             combined_text = ""
             
+            # Helper: Check if text looks like code
+            def looks_like_code(text: str) -> bool:
+                code_indicators = [
+                    'public ', 'private ', 'class ', 'static ', 'void ', 'int ',
+                    'def ', 'function ', 'return ', 'import ', 'from ',
+                    '{', '}', '()', ';', '==', '!=', '&&', '||',
+                    'this.', 'self.', 'Node ', 'String ', 'boolean '
+                ]
+                indicator_count = sum(1 for ind in code_indicators if ind in text)
+                return indicator_count >= 3
+            
+            # Helper: Format code block properly
+            def format_as_code(text: str) -> str:
+                # Detect language
+                if 'public class' in text or 'static void' in text:
+                    lang = 'java'
+                elif 'def ' in text and ':' in text:
+                    lang = 'python'
+                elif 'function ' in text or 'const ' in text:
+                    lang = 'javascript'
+                else:
+                    lang = ''
+                return f"\n```{lang}\n{text}\n```\n"
+            
             if pdf_text and ocr_text:
-                # Both have text - ALWAYS prefer PDF text (it's cleaner, no concat issues)
-                # Only use OCR to add content that PDF missed (like text in images)
+                # Both have text - combine intelligently
                 combined_text = pdf_text
                 
-                # Check if OCR found significantly more content (indicates images with text)
-                # Add unique OCR content that PDF missed
+                # Check if OCR found content not in PDF (usually code images)
                 ocr_lines = [line.strip() for line in ocr_text.split('\n') if line.strip()]
                 pdf_lower = pdf_text.lower()
                 added_from_ocr = []
                 
                 for line in ocr_lines:
-                    # Only add lines that are:
-                    # 1. Not already in PDF text
-                    # 2. Long enough to be meaningful (>15 chars)
-                    # 3. Not just numbers or symbols
                     line_clean = line.strip()
+                    # Add lines not already in PDF text
                     if (line_clean.lower() not in pdf_lower 
-                        and len(line_clean) > 15 
+                        and len(line_clean) > 10 
                         and any(c.isalpha() for c in line_clean)):
                         added_from_ocr.append(line_clean)
                 
                 if added_from_ocr:
-                    combined_text += "\n\n--- Additional content from images ---\n"
-                    combined_text += "\n".join(added_from_ocr)
-                    print(f"📝 Page {idx + 1}: PDF text + {len(added_from_ocr)} lines from OCR (images)")
+                    ocr_content = "\n".join(added_from_ocr)
+                    
+                    # Check if OCR content is code
+                    if looks_like_code(ocr_content):
+                        combined_text += "\n\n**📝 Code from Image:**"
+                        combined_text += format_as_code(ocr_content)
+                        print(f"📝 Page {idx + 1}: PDF text + CODE from image ({len(added_from_ocr)} lines)")
+                    else:
+                        combined_text += "\n\n**📷 Additional content from images:**\n"
+                        combined_text += ocr_content
+                        print(f"📝 Page {idx + 1}: PDF text + {len(added_from_ocr)} lines from OCR")
                 else:
                     print(f"📝 Page {idx + 1}: Using PDF text (OCR didn't find new content)")
+                    
             elif pdf_text:
                 combined_text = pdf_text
                 print(f"📝 Page {idx + 1}: Using PDF text only")
             elif ocr_text:
-                combined_text = ocr_text
-                print(f"📝 Page {idx + 1}: Using OCR text only (scanned page)")
+                # Only OCR text - might be scanned page with code
+                if looks_like_code(ocr_text):
+                    combined_text = "**📝 Code extracted from scanned page:**"
+                    combined_text += format_as_code(ocr_text)
+                    print(f"📝 Page {idx + 1}: Using OCR text as CODE (scanned page)")
+                else:
+                    combined_text = ocr_text
+                    print(f"📝 Page {idx + 1}: Using OCR text only (scanned page)")
             else:
                 combined_text = ""
                 print(f"⚠️ Page {idx + 1}: No text extracted")
