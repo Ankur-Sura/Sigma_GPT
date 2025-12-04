@@ -304,6 +304,85 @@ def ocr_space_for_pdf(image_bytes: bytes) -> str:
 def is_ocr_space_available():
     return bool(OCR_SPACE_API_KEY)
 
+
+def fix_ocr_code_formatting(text: str) -> str:
+    """
+    Fix OCR output that concatenates words without spaces.
+    Especially important for code where 'publicstaticvoid' should be 'public static void'
+    """
+    import re
+    
+    # Common Java/programming keywords that should be separated
+    keywords = [
+        'public', 'private', 'protected', 'static', 'void', 'int', 'String',
+        'boolean', 'return', 'if', 'else', 'while', 'for', 'class', 'new',
+        'null', 'true', 'false', 'this', 'super', 'extends', 'implements',
+        'import', 'package', 'throws', 'throw', 'try', 'catch', 'finally',
+        'abstract', 'final', 'synchronized', 'volatile', 'transient',
+        'interface', 'enum', 'break', 'continue', 'default', 'switch', 'case',
+        'Node', 'Math', 'System', 'args', 'main', 'print', 'println', 'out'
+    ]
+    
+    # Sort by length (longest first) to avoid partial matches
+    keywords = sorted(keywords, key=len, reverse=True)
+    
+    # Build regex pattern to add spaces before keywords when they're stuck together
+    for kw in keywords:
+        # Add space BEFORE keyword if preceded by lowercase letter or )
+        text = re.sub(rf'([a-z\)])({kw})(?=[A-Z\(\[])', rf'\1 \2', text)
+        # Add space AFTER keyword if followed by uppercase letter
+        text = re.sub(rf'({kw})([A-Z])', rf'\1 \2', text)
+    
+    # Fix camelCase that got merged (e.g., "rightRotate" stays but "NodeT2" becomes "Node T2")
+    # Only split when there's a pattern like lowercase->uppercase->lowercase that looks like merged words
+    text = re.sub(r'([a-z])([A-Z][a-z]{2,})', r'\1 \2', text)
+    
+    # Fix common patterns like "root.data+" -> "root.data + "
+    text = re.sub(r'(\w)([+\-*/=<>!&|]{1,2})(\w)', r'\1 \2 \3', text)
+    
+    # Fix "if(x)" -> "if (x)"
+    text = re.sub(r'\b(if|while|for|switch)\(', r'\1 (', text)
+    
+    # Fix "return x;" patterns that might be stuck
+    text = re.sub(r'return([A-Za-z])', r'return \1', text)
+    
+    # Clean up multiple spaces
+    text = re.sub(r'  +', ' ', text)
+    
+    return text
+
+
+def clean_ocr_text(text: str) -> str:
+    """
+    Clean and improve OCR text quality.
+    Detects if text is code and applies appropriate formatting.
+    """
+    import re
+    
+    if not text:
+        return ""
+    
+    # Basic cleanup
+    text = text.strip()
+    
+    # Remove common OCR artifacts
+    text = text.replace('\x0c', '\n')  # Form feed
+    text = text.replace('\r\n', '\n')
+    text = text.replace('\r', '\n')
+    
+    # Detect if this looks like code (has programming keywords)
+    code_indicators = ['public', 'private', 'class', 'def ', 'function', 'return', 'import', 'void', 'static']
+    looks_like_code = any(indicator in text.lower() for indicator in code_indicators)
+    
+    if looks_like_code:
+        text = fix_ocr_code_formatting(text)
+    
+    # Clean up excessive newlines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    
+    return text
+
+
 # Tesseract - Local fallback (requires system install)
 try:
     import pytesseract
@@ -984,6 +1063,13 @@ async def upload_pdf(file: UploadFile = File(...)):
                 except Exception as e:
                     print(f"⚠️ Page {idx + 1}: OCR failed - {e}")
                     ocr_text = ""
+            
+            # ═══════════════════════════════════════════════════════════════
+            # STEP 2.5: Clean OCR text (fix word concatenation issues)
+            # ═══════════════════════════════════════════════════════════════
+            if ocr_text.strip():
+                ocr_text = clean_ocr_text(ocr_text)
+                print(f"🧹 Page {idx + 1}: Cleaned OCR text")
             
             # ═══════════════════════════════════════════════════════════════
             # STEP 3: Combine PDF text + OCR text (capture everything!)
