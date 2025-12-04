@@ -931,29 +931,41 @@ async def upload_pdf(file: UploadFile = File(...)):
         
         # Check which OCR engines are available
         ocr_space_available = is_ocr_space_available()
-        tesseract_available = pytesseract is not None and convert_from_bytes is not None
-        ocr_available = ocr_space_available or tesseract_available
+        tesseract_available = pytesseract is not None
+        can_convert_to_image = convert_from_bytes is not None
+        ocr_available = (ocr_space_available or tesseract_available) and can_convert_to_image
+        
+        print(f"📄 Processing {len(reader.pages)} pages...")
+        print(f"   OCR available: {ocr_available} (OCR.space: {ocr_space_available}, Tesseract: {tesseract_available})")
         
         for idx, page in enumerate(reader.pages):
-            # Try to extract text normally first
-            page_text = page.extract_text() or ""
+            # ═══════════════════════════════════════════════════════════════
+            # STEP 1: Extract regular text using pypdf
+            # ═══════════════════════════════════════════════════════════════
+            pdf_text = (page.extract_text() or "").strip()
+            print(f"📄 Page {idx + 1}: Extracted {len(pdf_text)} chars from PDF text layer")
             
-            # OCR Fallback: If page has no text and OCR is available
-            if len(page_text.strip()) < 10 and ocr_available and convert_from_bytes is not None:
-                print(f"📄 Page {idx + 1}: Low text content, attempting OCR...")
-                
+            # ═══════════════════════════════════════════════════════════════
+            # STEP 2: ALWAYS try OCR to capture text from images
+            # ═══════════════════════════════════════════════════════════════
+            # This captures text in diagrams, screenshots, figures, etc.
+            ocr_text = ""
+            
+            if ocr_available:
                 try:
+                    print(f"🔍 Page {idx + 1}: Running OCR to capture image text...")
+                    
                     # Convert PDF page to image
                     images = convert_from_bytes(
                         content,
                         first_page=idx + 1,
                         last_page=idx + 1,
-                        dpi=150  # Lower DPI for faster processing
+                        dpi=200  # Good balance of quality and speed
                     )
                     
                     if images:
                         # Convert PIL image to bytes for OCR.space
-                        img_buffer = BytesIO()  # BytesIO already imported at top
+                        img_buffer = BytesIO()
                         images[0].save(img_buffer, format='PNG')
                         img_bytes = img_buffer.getvalue()
                         
@@ -961,21 +973,52 @@ async def upload_pdf(file: UploadFile = File(...)):
                         if ocr_space_available:
                             ocr_text = ocr_space_for_pdf(img_bytes)
                             if ocr_text.strip():
-                                page_text = ocr_text
-                                print(f"✅ OCR.space extracted text from page {idx + 1}")
+                                print(f"✅ Page {idx + 1}: OCR.space extracted {len(ocr_text)} chars")
                         
-                        # Fallback to Tesseract if OCR.space didn't work
-                        if len(page_text.strip()) < 10 and tesseract_available:
-                            ocr_text = pytesseract.image_to_string(images[0])
+                        # Fallback to Tesseract
+                        if not ocr_text.strip() and tesseract_available:
+                            ocr_text = pytesseract.image_to_string(images[0]) or ""
                             if ocr_text.strip():
-                                page_text = ocr_text
-                                print(f"✅ Tesseract extracted text from page {idx + 1}")
+                                print(f"✅ Page {idx + 1}: Tesseract extracted {len(ocr_text)} chars")
                                 
                 except Exception as e:
-                    print(f"⚠️ OCR failed for page {idx + 1}: {e}")
+                    print(f"⚠️ Page {idx + 1}: OCR failed - {e}")
+                    ocr_text = ""
             
-            pages.append({"page": idx + 1, "text": page_text})
-            full_text_parts.append(f"[Page {idx + 1}]\n{page_text}")
+            # ═══════════════════════════════════════════════════════════════
+            # STEP 3: Combine PDF text + OCR text (capture everything!)
+            # ═══════════════════════════════════════════════════════════════
+            combined_text = ""
+            
+            if pdf_text and ocr_text:
+                # Both have text - combine them, avoid duplicates
+                # If OCR text is much longer, it probably captured more (use it)
+                # If they're similar length, prefer PDF text (cleaner)
+                if len(ocr_text) > len(pdf_text) * 1.5:
+                    combined_text = ocr_text
+                    print(f"📝 Page {idx + 1}: Using OCR text (more complete)")
+                else:
+                    # Combine both - PDF text first, then unique OCR content
+                    combined_text = pdf_text
+                    # Add OCR text that's not already in PDF text (simple dedup)
+                    ocr_lines = [line.strip() for line in ocr_text.split('\n') if line.strip()]
+                    pdf_lower = pdf_text.lower()
+                    for line in ocr_lines:
+                        if line.lower() not in pdf_lower and len(line) > 10:
+                            combined_text += f"\n{line}"
+                    print(f"📝 Page {idx + 1}: Combined PDF + OCR text")
+            elif pdf_text:
+                combined_text = pdf_text
+                print(f"📝 Page {idx + 1}: Using PDF text only")
+            elif ocr_text:
+                combined_text = ocr_text
+                print(f"📝 Page {idx + 1}: Using OCR text only (scanned page)")
+            else:
+                combined_text = ""
+                print(f"⚠️ Page {idx + 1}: No text extracted")
+            
+            pages.append({"page": idx + 1, "text": combined_text})
+            full_text_parts.append(f"[Page {idx + 1}]\n{combined_text}")
         
         full_text = "\n\n".join(full_text_parts)
         
