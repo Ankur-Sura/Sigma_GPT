@@ -770,6 +770,62 @@ def rag_query(payload: RAGQuery):
 
 
 # =============================================================================
+#                     ENDPOINT: PDF STATUS (Diagnostic)
+# =============================================================================
+
+@rag_router.get("/pdf/status")
+async def pdf_status():
+    """
+    📖 PDF Service Status Endpoint
+    ------------------------------
+    Returns the status of the PDF/RAG service including:
+    - Qdrant connection status
+    - Collection info
+    - Environment configuration
+    
+    HTTP GET to: http://localhost:8000/pdf/status
+    """
+    status = {
+        "service": "RAG/PDF Service",
+        "qdrant_url": QDRANT_URL,
+        "qdrant_collection": QDRANT_COLLECTION,
+        "qdrant_api_key_set": bool(QDRANT_API_KEY),
+        "openai_api_key_set": bool(os.getenv("OPENAI_API_KEY")),
+        "ocr_available": convert_from_bytes is not None and pytesseract is not None,
+        "qdrant_connected": False,
+        "collection_exists": False,
+        "collection_points": 0,
+        "error": None
+    }
+    
+    try:
+        # Test Qdrant connection
+        qdrant_client_kwargs = {"url": QDRANT_URL}
+        if QDRANT_API_KEY:
+            qdrant_client_kwargs["api_key"] = QDRANT_API_KEY
+        
+        qdrant_client = QdrantClient(**qdrant_client_kwargs)
+        collections = qdrant_client.get_collections()
+        status["qdrant_connected"] = True
+        
+        # Check if our collection exists
+        collection_names = [c.name for c in collections.collections]
+        status["all_collections"] = collection_names
+        
+        if QDRANT_COLLECTION in collection_names:
+            status["collection_exists"] = True
+            # Get collection info
+            collection_info = qdrant_client.get_collection(QDRANT_COLLECTION)
+            status["collection_points"] = collection_info.points_count
+            status["collection_status"] = collection_info.status.value if collection_info.status else "unknown"
+        
+    except Exception as e:
+        status["error"] = str(e)
+    
+    return status
+
+
+# =============================================================================
 #                     ENDPOINT: PDF UPLOAD
 # =============================================================================
 
@@ -851,10 +907,17 @@ async def upload_pdf(file: UploadFile = File(...)):
         
         # Check if we got any text
         if not any((p["text"] or "").strip() for p in pages):
-            raise HTTPException(
-                status_code=422,
-                detail="No text could be extracted from the PDF"
-            )
+            # Check if this is likely a scanned PDF
+            if not ocr_available:
+                raise HTTPException(
+                    status_code=422,
+                    detail="This appears to be a scanned PDF (image-based). OCR is not available on this server. Please upload a text-based PDF instead, or copy-paste the text content."
+                )
+            else:
+                raise HTTPException(
+                    status_code=422,
+                    detail="No text could be extracted from the PDF. The file may be corrupted or contain only images."
+                )
         
         # Step 3: Split into Chunks
         # -------------------------
