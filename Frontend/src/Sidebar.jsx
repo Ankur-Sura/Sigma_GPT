@@ -64,6 +64,9 @@ function Sidebar() {
     
     const [aboutOpen, setAboutOpen] = useState(false);
     // 📖 Local state: Is settings dropdown open?
+    
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    // 🆕 Mobile: Sidebar open/closed state
 
     const navigate = useNavigate();
     // 📖 React Router hook for navigation
@@ -175,8 +178,19 @@ function Sidebar() {
     }
 
     return (
-        <section className="sidebar">
-            <button onClick={createNewChat}>
+        <section className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+            {/* 🆕 Mobile Hamburger Button */}
+            <button 
+                className="mobile-menu-toggle"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label="Toggle menu"
+            >
+                <i className={`fa-solid ${sidebarOpen ? 'fa-times' : 'fa-bars'}`}></i>
+            </button>
+            <button onClick={() => {
+                createNewChat();
+                setSidebarOpen(false); // 🆕 Close sidebar on mobile after creating new chat
+            }}>
                 <div className="brand">
                     <img src={logoImage} alt="gpt logo" className="logo"></img>
                     <span className="brand-text">Sigma GPT</span>
@@ -191,7 +205,10 @@ function Sidebar() {
                         const displayTitle = capitalizeTitle(thread.title);
                         return (
                         <li key={idx} 
-                            onClick={(e) => changeThread(thread.threadId)}
+                            onClick={(e) => {
+                                changeThread(thread.threadId);
+                                setSidebarOpen(false); // 🆕 Close sidebar on mobile after selection
+                            }}
                             className={thread.threadId === currThreadId ? "highlighted": " "}
                         >
                             <span className="historyTitle">

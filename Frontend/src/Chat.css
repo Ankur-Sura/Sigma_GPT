@@ -75,6 +75,68 @@
 
 .gptDiv img {
     width: 320px; /* make preview clearer */
+    max-width: 100%; /* responsive images */
+    height: auto;
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================= */
+
+/* Mobile Phones (< 768px) */
+@media (max-width: 767px) {
+    .chats {
+        padding: 0.5rem 1rem 0.75rem;
+    }
+    
+    .chats table {
+        min-width: 100%;
+        font-size: 0.85rem;
+    }
+    
+    .chats th,
+    .chats td {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+    
+    .userDiv {
+        font-size: 0.9rem;
+    }
+    
+    .gptDiv {
+        font-size: 0.95rem;
+        max-width: 100%;
+        line-height: 1.6;
+    }
+    
+    .gptDiv img {
+        width: 100%;
+        max-width: 280px;
+    }
+}
+
+/* Tablets (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .gptDiv {
+        max-width: 700px;
+    }
+    
+    .gptDiv img {
+        max-width: 300px;
+    }
+}
+
+/* Large Monitors (> 1920px) */
+@media (min-width: 1921px) {
+    .gptDiv {
+        max-width: 1000px;
+    }
+    
+    .gptDiv img {
+        max-width: 400px;
+    }
+}
     max-width: 100%;
     max-height: 420px;
     border-radius: 12px; /* soften image corners */

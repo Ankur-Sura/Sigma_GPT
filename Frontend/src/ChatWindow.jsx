@@ -1159,6 +1159,20 @@ function ChatWindow() {
     return (
         <div className="chatWindow">
             <div className="navbar">
+                {/* 🆕 Mobile Menu Button - Opens Sidebar */}
+                <button 
+                    className="mobile-menu-btn"
+                    onClick={() => {
+                        // Trigger sidebar open via event or context
+                        const sidebar = document.querySelector('.sidebar');
+                        if (sidebar) {
+                            sidebar.classList.toggle('open');
+                        }
+                    }}
+                    aria-label="Open menu"
+                >
+                    <i className="fa-solid fa-bars"></i>
+                </button>
                 <span>SigmaGPT <i className="fa-solid fa-chevron-down"></i></span>
             </div>
             {ragMode && pdfName && (

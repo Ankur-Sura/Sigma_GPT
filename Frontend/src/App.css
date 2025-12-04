@@ -17,3 +17,34 @@ body {
     background: var(--panel); /* main content surface */
     border-left: 1px solid var(--border); /* divide sidebar from content */
 }
+
+/* =============================================================================
+   RESPONSIVE DESIGN - Mobile, Tablet, Desktop, Large Monitors
+   ============================================================================= */
+
+/* Mobile Phones (< 768px) */
+@media (max-width: 767px) {
+    .app {
+        flex-direction: column;
+    }
+    
+    .mainShell {
+        border-left: none;
+        border-top: 1px solid var(--border);
+    }
+}
+
+/* Tablets (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .mainShell {
+        border-left: 1px solid var(--border);
+    }
+}
+
+/* Large Monitors (> 1920px) - Center content with max-width */
+@media (min-width: 1921px) {
+    .app {
+        max-width: 1920px;
+        margin: 0 auto;
+    }
+}

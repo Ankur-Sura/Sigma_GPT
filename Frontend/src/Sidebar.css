@@ -12,6 +12,51 @@
     position: sticky; /* stay fixed on scroll */
     top: 0; /* align stickiness */
     position: relative; /* anchor absolute dropdown */
+    transition: transform 0.3s ease, width 0.3s ease; /* smooth transitions */
+}
+
+/* Mobile: Hide sidebar by default, show as overlay */
+@media (max-width: 767px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 1000;
+        width: 280px;
+        transform: translateX(-100%); /* Hidden by default */
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    }
+    
+    .sidebar.open {
+        transform: translateX(0); /* Show when open */
+    }
+    
+    /* Overlay backdrop when sidebar is open */
+    .sidebar::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+    
+    .sidebar.open::before {
+        opacity: 1;
+        pointer-events: all;
+    }
+}
+
+/* Tablets: Slightly narrower sidebar */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .sidebar {
+        width: 280px;
+    }
 }
 
 .sidebar button {
@@ -298,4 +343,35 @@
 
 .aboutItem.linkItem:hover {
     background: rgba(124, 231, 196, 0.15); /* accent hover for links */
+}
+
+/* 🆕 Mobile Menu Toggle Button (inside sidebar) */
+.mobile-menu-toggle {
+    display: none; /* Hidden on desktop */
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    color: var(--text);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    transition: all 0.2s ease;
+}
+
+.mobile-menu-toggle:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+@media (max-width: 767px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
 }
