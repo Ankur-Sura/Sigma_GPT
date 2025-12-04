@@ -1510,110 +1510,543 @@ def detect_query_type(query: str) -> Dict[str, Any]:
     }
 
 
-def run_sector_analysis(sector_name: str, query: str) -> Dict[str, Any]:
+# =============================================================================
+#                     SECTOR ANALYSIS WORKFLOW (4 NODES)
+# =============================================================================
+
+def sector_general_overview_node(sector_name: str, query: str) -> Dict[str, Any]:
     """
-    📖 Run Sector-Level Analysis (Simplified)
-    ==========================================
+    📖 Node 1: General Overview (Based on Current News)
+    ====================================================
     
-    For sector-level queries (e.g., "Defence shares", "IT sector"),
-    provides a simplified analysis without going through full company workflow.
+    GOAL: Provide a comprehensive overview of the sector based on latest news and trends.
     
-    This is faster and more appropriate for sector-level questions.
+    WHAT IT DOES:
+    1. Searches for latest sector news
+    2. Analyzes current sector trends
+    3. Provides general overview and context
     """
     print("\n" + "="*60)
-    print(f"🏭 SECTOR ANALYSIS: {sector_name}")
+    print("📰 NODE 1: GENERAL OVERVIEW (Current News)")
     print("="*60)
     
-    from tools_service import indian_stock_search, smart_web_search
+    from tools_service import smart_web_search, search_news, get_current_datetime
     from openai import OpenAI
-    client = OpenAI()
+    import json
     
-    # Get current date
-    from tools_service import get_current_datetime
+    client = OpenAI()
     date_info = get_current_datetime()
     current_date = date_info.get("formatted", "")
     
-    # Step 1: Search for sector trends
-    sector_query = f"{sector_name} sector India 2024 trends growth outlook"
-    print(f"🔍 Searching sector trends: {sector_query}")
-    sector_results = smart_web_search(sector_query, max_results=5)
-    
-    # Step 2: Search for top companies in this sector
-    companies_query = f"top {sector_name} companies India NSE BSE listed"
-    print(f"🔍 Searching top companies: {companies_query}")
-    companies_results = smart_web_search(companies_query, max_results=5)
-    
-    # Step 3: Search for sector-specific news
-    news_query = f"{sector_name} sector India latest news 2024"
-    print(f"🔍 Searching sector news: {news_query}")
-    news_results = smart_web_search(news_query, max_results=5)
-    
-    # Step 4: Generate comprehensive sector analysis
-    analysis_prompt = f"""
-    You are a financial analyst specializing in Indian stock markets.
-    
-    User Query: "{query}"
-    Sector: {sector_name}
-    Current Date: {current_date}
-    
-    SECTOR TRENDS:
-    {sector_results.get('results', [])[:3]}
-    
-    TOP COMPANIES IN SECTOR:
-    {companies_results.get('results', [])[:3]}
-    
-    SECTOR NEWS:
-    {news_results.get('results', [])[:3]}
-    
-    Provide a comprehensive analysis covering:
-    1. Sector Overview: Current state and growth prospects
-    2. Key Trends: What's driving the sector
-    3. Top Companies: Major players in this sector
-    4. Investment Outlook: Is this a good sector to invest in?
-    5. Risks: What are the key risks?
-    6. Recommendation: Should someone invest in this sector? Why or why not?
-    
-    Format your response clearly with sections.
-    Always end with: "⚠️ This is not financial advice. Please do your own research before investing."
-    """
+    print(f"📌 Analyzing {sector_name} sector overview")
     
     try:
+        # Search for latest sector news
+        news_query = f"{sector_name} sector India latest news 2024 current events"
+        print(f"🔍 Searching latest news: {news_query}")
+        news_results = search_news(news_query, max_results=5)
+        
+        # Search for sector trends
+        trends_query = f"{sector_name} sector India 2024 trends growth outlook forecast"
+        print(f"🔍 Searching sector trends: {trends_query}")
+        trends_results = smart_web_search(trends_query, max_results=5)
+        
+        # Search for sector performance
+        performance_query = f"{sector_name} sector India performance NSE BSE index returns 2024"
+        print(f"🔍 Searching sector performance: {performance_query}")
+        performance_results = smart_web_search(performance_query, max_results=3)
+        
+        # Generate general overview
+        overview_prompt = f"""
+        You are a financial analyst specializing in Indian stock markets.
+        
+        User Query: "{query}"
+        Sector: {sector_name}
+        Current Date: {current_date}
+        
+        LATEST NEWS:
+        {json.dumps(news_results.get('results', [])[:5], indent=2)}
+        
+        SECTOR TRENDS:
+        {json.dumps(trends_results.get('results', [])[:5], indent=2)}
+        
+        SECTOR PERFORMANCE:
+        {json.dumps(performance_results.get('results', [])[:3], indent=2)}
+        
+        Provide a comprehensive GENERAL OVERVIEW covering:
+        
+        **📰 General Overview - {sector_name} Sector**
+        
+        1. **Current State:** What's happening in this sector right now?
+        2. **Recent Developments:** Key news and events affecting the sector
+        3. **Sector Performance:** How has the sector been performing recently?
+        4. **Growth Drivers:** What factors are driving growth or decline?
+        5. **Market Context:** How does this sector fit into the broader Indian economy?
+        
+        Keep it informative and based on the latest data. Use ₹ (Rupees) for all prices.
+        Be concise (200-250 words).
+        """
+        
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a financial analyst for Indian stock markets."},
-                {"role": "user", "content": analysis_prompt}
+                {"role": "user", "content": overview_prompt}
             ],
             temperature=0.7
         )
         
-        analysis = response.choices[0].message.content
+        general_overview = response.choices[0].message.content
+        
+        print(f"✅ General Overview Complete")
         
         return {
-            "type": "sector_analysis",
-            "sector": sector_name,
-            "query": query,
-            "sector_analysis": analysis,
-            "sector_trends": sector_results,
-            "top_companies": companies_results,
-            "sector_news": news_results,
-            "final_recommendation": analysis,
-            "steps": [
-                {"step": "sector_trends", "status": "complete"},
-                {"step": "top_companies", "status": "complete"},
-                {"step": "sector_news", "status": "complete"},
-                {"step": "sector_analysis", "status": "complete"}
-            ]
+            "general_overview": general_overview,
+            "news_results": news_results,
+            "trends_results": trends_results,
+            "performance_results": performance_results
         }
+        
     except Exception as e:
-        print(f"❌ Sector analysis failed: {e}")
+        print(f"❌ Error in general overview: {e}")
         return {
-            "type": "sector_analysis",
-            "sector": sector_name,
-            "query": query,
-            "final_recommendation": f"Analysis for {sector_name} sector is currently unavailable. Please try asking about a specific company.",
-            "error": str(e)
+            "general_overview": f"General overview for {sector_name} sector is currently unavailable.",
+            "news_results": {},
+            "trends_results": {},
+            "performance_results": {}
         }
+
+
+def sector_investor_sentiment_node(sector_name: str, general_overview: str) -> Dict[str, Any]:
+    """
+    📖 Node 2: Investor Sentiment
+    =============================
+    
+    GOAL: Analyze investor sentiment and market outlook for the sector.
+    
+    WHAT IT DOES:
+    1. Searches for investor sentiment and analyst views
+    2. Checks institutional interest (FII/DII)
+    3. Analyzes market outlook for the sector
+    """
+    print("\n" + "="*60)
+    print("📊 NODE 2: INVESTOR SENTIMENT")
+    print("="*60)
+    
+    from tools_service import smart_web_search
+    from openai import OpenAI
+    import json
+    
+    client = OpenAI()
+    
+    print(f"📌 Analyzing investor sentiment for {sector_name} sector")
+    
+    try:
+        # Search for investor sentiment
+        sentiment_query = f"{sector_name} sector India investor sentiment analyst outlook 2024"
+        print(f"🔍 Searching investor sentiment: {sentiment_query}")
+        sentiment_results = smart_web_search(sentiment_query, max_results=5)
+        
+        # Search for institutional interest
+        institutional_query = f"{sector_name} sector India FII DII institutional investment flows"
+        print(f"🔍 Searching institutional interest: {institutional_query}")
+        institutional_results = smart_web_search(institutional_query, max_results=3)
+        
+        # Search for analyst recommendations
+        analyst_query = f"{sector_name} sector India analyst recommendation buy sell hold outlook"
+        print(f"🔍 Searching analyst views: {analyst_query}")
+        analyst_results = smart_web_search(analyst_query, max_results=3)
+        
+        # Generate investor sentiment analysis
+        sentiment_prompt = f"""
+        Based on the following data, provide an INVESTOR SENTIMENT analysis for the {sector_name} sector in India.
+        
+        GENERAL OVERVIEW (from previous node):
+        {general_overview[:500]}
+        
+        INVESTOR SENTIMENT DATA:
+        {json.dumps(sentiment_results.get("results", [])[:5], indent=2)}
+        
+        INSTITUTIONAL INTEREST:
+        {json.dumps(institutional_results.get("results", [])[:3], indent=2)}
+        
+        ANALYST VIEWS:
+        {json.dumps(analyst_results.get("results", [])[:3], indent=2)}
+        
+        Provide a structured sentiment analysis:
+        
+        **📊 Investor Sentiment - {sector_name} Sector**
+        
+        🎯 **Overall Sentiment:** [Bullish 🟢 / Bearish 🔴 / Neutral 🟡]
+        
+        📈 **Analyst Outlook:**
+        - What are analysts saying about this sector?
+        - Buy/Sell/Hold recommendations for the sector
+        
+        🏛️ **Institutional Interest:**
+        - FII (Foreign Institutional Investors) flows
+        - DII (Domestic Institutional Investors) flows
+        - Are institutions buying or selling?
+        
+        💬 **Market Sentiment:**
+        - What are investors saying about this sector?
+        - Recent sentiment drivers
+        
+        ⚡ **Sentiment Score:** [1-10] with brief justification
+        
+        Keep it concise and data-driven (150-200 words).
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": sentiment_prompt}]
+        )
+        
+        investor_sentiment = response.choices[0].message.content
+        
+        print(f"✅ Investor Sentiment Analysis Complete")
+        
+        return {
+            "investor_sentiment": investor_sentiment,
+            "sentiment_results": sentiment_results,
+            "institutional_results": institutional_results,
+            "analyst_results": analyst_results
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in investor sentiment analysis: {e}")
+        return {
+            "investor_sentiment": f"Investor sentiment data for {sector_name} sector is not available.",
+            "sentiment_results": {},
+            "institutional_results": {},
+            "analyst_results": {}
+        }
+
+
+def sector_technical_analysis_node(sector_name: str, general_overview: str, investor_sentiment: str) -> Dict[str, Any]:
+    """
+    📖 Node 3: Technical Analysis & Risk Check
+    ==========================================
+    
+    GOAL: Provide technical analysis and risk assessment for the sector.
+    
+    WHAT IT DOES:
+    1. Analyzes sector indices and technical indicators
+    2. Checks for sector-level risks
+    3. Evaluates sector valuation
+    4. Provides risk warnings
+    """
+    print("\n" + "="*60)
+    print("📈 NODE 3: TECHNICAL ANALYSIS & RISK CHECK")
+    print("="*60)
+    
+    from tools_service import smart_web_search, search_news
+    from openai import OpenAI
+    import json
+    
+    client = OpenAI()
+    
+    print(f"📌 Technical analysis for {sector_name} sector")
+    
+    # Initialize risk flags
+    risk_warnings = []
+    
+    try:
+        # Search for sector index performance
+        index_query = f"{sector_name} sector index NSE BSE performance technical analysis India"
+        print(f"🔍 Searching sector index: {index_query}")
+        index_results = smart_web_search(index_query, max_results=3)
+        
+        # Search for sector valuation metrics
+        valuation_query = f"{sector_name} sector India P/E ratio valuation metrics overvalued undervalued"
+        print(f"🔍 Searching sector valuation: {valuation_query}")
+        valuation_results = smart_web_search(valuation_query, max_results=3)
+        
+        # Search for sector risks
+        risks_query = f"{sector_name} sector India risks challenges threats 2024"
+        print(f"🔍 Searching sector risks: {risks_query}")
+        risks_results = smart_web_search(risks_query, max_results=3)
+        
+        # Search for negative news
+        negative_news_query = f"{sector_name} sector India negative news problems issues concerns"
+        print(f"🔍 Checking for negative news: {negative_news_query}")
+        negative_news_results = search_news(negative_news_query, max_results=3)
+        
+        # Generate technical analysis
+        tech_prompt = f"""
+        You are a technical analyst with STRICT risk management rules.
+        This is for the {sector_name} sector in Indian stock markets (NSE/BSE).
+        All prices must be in ₹ (Rupees).
+        
+        PREVIOUS ANALYSIS:
+        General Overview: {general_overview[:300]}
+        Investor Sentiment: {investor_sentiment[:300]}
+        
+        SECTOR INDEX PERFORMANCE:
+        {json.dumps(index_results.get("results", [])[:3], indent=2)}
+        
+        SECTOR VALUATION:
+        {json.dumps(valuation_results.get("results", [])[:3], indent=2)}
+        
+        SECTOR RISKS:
+        {json.dumps(risks_results.get("results", [])[:3], indent=2)}
+        
+        NEGATIVE NEWS:
+        {json.dumps(negative_news_results.get("results", [])[:3], indent=2)}
+        
+        Provide a technical analysis and risk assessment:
+        
+        **📈 Technical Analysis & Risk Check - {sector_name} Sector**
+        
+        📊 **Sector Performance:**
+        - Current sector index levels
+        - Performance vs market (Nifty/Sensex)
+        - Key technical levels (support/resistance)
+        
+        💰 **Valuation:**
+        - Is the sector overvalued or undervalued?
+        - P/E ratios and valuation metrics
+        - Comparison with historical averages
+        
+        ⚠️ **Risk Assessment:**
+        - Key risks facing this sector
+        - Regulatory risks
+        - Market risks
+        - Any negative developments
+        
+        🚨 **Risk Warnings:**
+        - List any critical warnings
+        - Speculative zone indicators
+        - Overvaluation concerns
+        
+        Keep it concise and actionable (200-250 words).
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": tech_prompt}]
+        )
+        
+        technical_analysis = response.choices[0].message.content
+        
+        # Extract risk warnings from the analysis
+        if "overvalued" in technical_analysis.lower() or "expensive" in technical_analysis.lower():
+            risk_warnings.append("⚠️ Sector appears overvalued")
+        if "risk" in technical_analysis.lower() or "warning" in technical_analysis.lower():
+            risk_warnings.append("⚠️ Sector has significant risks")
+        if negative_news_results.get("results"):
+            risk_warnings.append("🚨 Negative news detected in sector")
+        
+        print(f"✅ Technical Analysis Complete")
+        
+        return {
+            "technical_analysis": technical_analysis,
+            "risk_warnings": risk_warnings,
+            "index_results": index_results,
+            "valuation_results": valuation_results,
+            "risks_results": risks_results,
+            "negative_news_results": negative_news_results
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in technical analysis: {e}")
+        return {
+            "technical_analysis": f"Technical analysis for {sector_name} sector is not available.",
+            "risk_warnings": [],
+            "index_results": {},
+            "valuation_results": {},
+            "risks_results": {},
+            "negative_news_results": {}
+        }
+
+
+def sector_investment_suggestion_node(
+    sector_name: str, 
+    query: str,
+    general_overview: str,
+    investor_sentiment: str,
+    technical_analysis: str,
+    risk_warnings: list
+) -> Dict[str, Any]:
+    """
+    📖 Node 4: Investment Suggestion
+    ================================
+    
+    GOAL: Provide final investment recommendation based on all previous analysis.
+    
+    WHAT IT DOES:
+    1. Synthesizes all previous node outputs
+    2. Provides clear investment recommendation
+    3. Lists top companies in the sector
+    4. Gives actionable advice
+    """
+    print("\n" + "="*60)
+    print("💡 NODE 4: INVESTMENT SUGGESTION")
+    print("="*60)
+    
+    from tools_service import smart_web_search
+    from openai import OpenAI
+    import json
+    
+    client = OpenAI()
+    
+    print(f"📌 Generating investment suggestion for {sector_name} sector")
+    
+    try:
+        # Search for top companies in sector
+        companies_query = f"top {sector_name} companies India NSE BSE listed stocks best"
+        print(f"🔍 Searching top companies: {companies_query}")
+        companies_results = smart_web_search(companies_query, max_results=5)
+        
+        # Generate investment suggestion
+        suggestion_prompt = f"""
+        You are a financial advisor specializing in Indian stock markets.
+        
+        User Query: "{query}"
+        Sector: {sector_name}
+        
+        Based on the following comprehensive analysis, provide a final INVESTMENT SUGGESTION:
+        
+        **GENERAL OVERVIEW:**
+        {general_overview}
+        
+        **INVESTOR SENTIMENT:**
+        {investor_sentiment}
+        
+        **TECHNICAL ANALYSIS & RISKS:**
+        {technical_analysis}
+        
+        **RISK WARNINGS:**
+        {', '.join(risk_warnings) if risk_warnings else 'None'}
+        
+        **TOP COMPANIES IN SECTOR:**
+        {json.dumps(companies_results.get('results', [])[:5], indent=2)}
+        
+        Provide a comprehensive investment suggestion:
+        
+        **💡 Investment Suggestion - {sector_name} Sector**
+        
+        🎯 **Recommendation:** [BUY / HOLD / AVOID / CAUTIOUS]
+        
+        📋 **Summary:**
+        - Brief summary of all analysis points
+        
+        ✅ **Reasons to Invest:**
+        - List positive factors
+        
+        ⚠️ **Reasons to Be Cautious:**
+        - List concerns and risks
+        
+        🏢 **Top Companies to Consider:**
+        - List 3-5 top companies in this sector (if recommendation is BUY/CAUTIOUS)
+        
+        💰 **Investment Strategy:**
+        - How should someone approach investing in this sector?
+        - Lump sum or SIP approach?
+        - Time horizon recommendations
+        
+        📊 **Final Verdict:**
+        - Clear, actionable recommendation
+        - Risk level assessment
+        
+        Always end with: "⚠️ This is not financial advice. Please do your own research before investing."
+        
+        Keep it comprehensive but clear (300-400 words).
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a financial advisor for Indian stock markets."},
+                {"role": "user", "content": suggestion_prompt}
+            ],
+            temperature=0.7
+        )
+        
+        investment_suggestion = response.choices[0].message.content
+        
+        print(f"✅ Investment Suggestion Complete")
+        
+        return {
+            "investment_suggestion": investment_suggestion,
+            "companies_results": companies_results
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in investment suggestion: {e}")
+        return {
+            "investment_suggestion": f"Investment suggestion for {sector_name} sector is currently unavailable.",
+            "companies_results": {}
+        }
+
+
+def run_sector_analysis(sector_name: str, query: str) -> Dict[str, Any]:
+    """
+    📖 Run Sector-Level Analysis (4-Node Workflow)
+    ==============================================
+    
+    For sector-level queries (e.g., "Defence shares", "IT sector"),
+    follows a structured 4-node workflow:
+    
+    1. General Overview (based on current news)
+    2. Investor Sentiment
+    3. Technical Analysis & Risk Check
+    4. Investment Suggestion (based on all above nodes)
+    
+    This provides comprehensive sector analysis in a structured manner.
+    """
+    print("\n" + "="*60)
+    print(f"🏭 SECTOR ANALYSIS WORKFLOW: {sector_name}")
+    print("="*60)
+    
+    # Node 1: General Overview
+    node1_result = sector_general_overview_node(sector_name, query)
+    general_overview = node1_result.get("general_overview", "")
+    
+    # Node 2: Investor Sentiment
+    node2_result = sector_investor_sentiment_node(sector_name, general_overview)
+    investor_sentiment = node2_result.get("investor_sentiment", "")
+    
+    # Node 3: Technical Analysis & Risk Check
+    node3_result = sector_technical_analysis_node(sector_name, general_overview, investor_sentiment)
+    technical_analysis = node3_result.get("technical_analysis", "")
+    risk_warnings = node3_result.get("risk_warnings", [])
+    
+    # Node 4: Investment Suggestion
+    node4_result = sector_investment_suggestion_node(
+        sector_name, query, general_overview, investor_sentiment, 
+        technical_analysis, risk_warnings
+    )
+    investment_suggestion = node4_result.get("investment_suggestion", "")
+    
+    # Combine all results
+    final_recommendation = f"""
+{general_overview}
+
+{investor_sentiment}
+
+{technical_analysis}
+
+{investment_suggestion}
+"""
+    
+    return {
+        "type": "sector_analysis",
+        "sector": sector_name,
+        "query": query,
+        "general_overview": general_overview,
+        "investor_sentiment": investor_sentiment,
+        "technical_analysis": technical_analysis,
+        "investment_suggestion": investment_suggestion,
+        "risk_warnings": risk_warnings,
+        "final_recommendation": final_recommendation,
+        "steps": [
+            {"step": "general_overview", "status": "complete"},
+            {"step": "investor_sentiment", "status": "complete"},
+            {"step": "technical_analysis", "status": "complete"},
+            {"step": "investment_suggestion", "status": "complete"}
+        ]
+    }
 
 
 def run_stock_research(query: str, company_name: Optional[str] = None) -> Dict[str, Any]:
