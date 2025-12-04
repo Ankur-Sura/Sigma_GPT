@@ -156,17 +156,20 @@
     .mobile-menu-btn {
         display: flex;
         order: -1; /* 🆕 Show first (left side) */
+        margin-right: auto; /* 🆕 Push to left, keep space after */
     }
     
     .navbar {
         padding: 0.75rem 0.5rem 0.5rem;
         gap: 8px; /* 🆕 Smaller gap on mobile */
+        justify-content: flex-start; /* 🆕 Align items to left */
     }
     
     .navbar span {
         margin: 0;
         font-size: 0.9rem;
         text-align: center;
+        margin-left: auto; /* 🆕 Push text to right if needed */
     }
 }
 
