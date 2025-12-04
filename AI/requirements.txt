@@ -87,12 +87,13 @@ langchain-text-splitters>=0.3.0,<1.0.0
 # Used in: rag_service.py - RecursiveCharacterTextSplitter(...)
 # 🔗 Your notes (04-RAG/indexing.py): RecursiveCharacterTextSplitter(...)
 
-langchain>=0.3.0,<1.0.0
+langchain>=0.3.0,<0.4.0
 # 📖 LangChain - Core LangChain package
 # From: https://python.langchain.com/
 # Why: Required by stock_graph.py for langchain.globals.set_debug() and set_verbose()
 # Used in: stock_graph.py - from langchain.globals import set_debug, set_verbose
-# 📌 Note: langchain-qdrant will be resolved to a compatible version automatically
+# 📌 IMPORTANT: Constrained to <0.4.0 to ensure compatibility with langchain-qdrant<1.0.0
+# Langchain 0.4+ requires langchain-qdrant 1.x, which breaks compatibility with existing Qdrant data
 
 langgraph>=0.2.0,<1.0.0
 # 📖 LangGraph - Build stateful, multi-actor applications with LLMs
