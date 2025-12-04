@@ -139,7 +139,7 @@ function Sidebar() {
 
         try {
             // Fetch ALL messages for this thread (simple, no pagination)
-            const response = await fetch(`${API_URL}/api/thread/${newThreadId}`);
+            const response = await fetch(`${API_URL}/api/thread/${newThreadId}?user_id=${encodeURIComponent(userId || "default")}`);
             const res = await response.json();
             
             // Handle both formats: array (old) or object with messages (new)
