@@ -167,6 +167,22 @@ exa_py>=2.0.1
 # 📌 Better for research-heavy queries, understands intent
 # Set EXA_API_KEY in .env file
 
+tavily-python>=0.3.0
+# 📖 Tavily - AI-optimized search engine for AI agents
+# From: https://github.com/tavily/tavily-python
+# Why: Primary search engine built specifically for AI agents
+# Used in: tools_service.py - tavily_search()
+# 📌 Returns clean, structured results (like ChatGPT's Bing)
+# Set TAVILY_API_KEY in .env file
+# 🔗 FREE: 1,000 searches/month on free tier
+
+duckduckgo-search>=4.1.0
+# 📖 DuckDuckGo Search - Privacy-focused search engine
+# From: https://github.com/deedy5/duckduckgo_search
+# Why: Tertiary fallback when Tavily and Exa fail
+# Used in: tools_service.py - duckduckgo_search()
+# 📌 No API key required, unlimited free searches
+
 # =============================================================================
 #                     REDIS (Optional - for persistent memory)
 # =============================================================================
