@@ -701,7 +701,6 @@ def duckduckgo_search(query: str, max_results: int = 5) -> Dict[str, Any]:
 #                     🆕 UNIFIED WEB SEARCH (Smart Fallback)
 # =============================================================================
 
-@tool
 def smart_web_search(query: str, max_results: int = 5) -> Dict[str, Any]:
     """Search the web for current information on any topic.
     
@@ -758,7 +757,6 @@ def smart_web_search(query: str, max_results: int = 5) -> Dict[str, Any]:
 #                     🆕 INDIAN STOCK NEWS SEARCH
 # =============================================================================
 
-@tool
 def indian_stock_search(
     query: str, 
     max_results: int = 5,
@@ -833,7 +831,6 @@ def indian_stock_search(
 #                     🆕 WEATHER TOOL
 # =============================================================================
 
-@tool
 def get_weather(city: str) -> Dict[str, Any]:
     """Get current weather for any city.
     
@@ -904,7 +901,6 @@ def get_weather(city: str) -> Dict[str, Any]:
 #                     🆕 DATE/TIME TOOL
 # =============================================================================
 
-@tool
 def get_current_datetime() -> Dict[str, Any]:
     """Get current date and time.
     
@@ -958,7 +954,6 @@ def get_current_datetime() -> Dict[str, Any]:
 #                     🆕 NEWS SEARCH TOOL
 # =============================================================================
 
-@tool
 def search_news(query: str, max_results: int = 5) -> Dict[str, Any]:
     """Search for recent news articles on any topic.
     
@@ -1742,6 +1737,80 @@ AVAILABLE_TOOLS = {
     "get_current_datetime": get_current_datetime,
     "search_news": search_news,
 }
+
+
+# =============================================================================
+#                     🆕 LANGGRAPH TOOLS (for ToolNode)
+# =============================================================================
+"""
+📖 LangGraph Tool Wrappers - MATCHES YOUR NOTES!
+-------------------------------------------------
+
+The @tool decorator changes function behavior (wraps in Tool object).
+For DIRECT function calls (like smart_web_search("query")), use the 
+regular functions above.
+
+For LANGGRAPH (ToolNode, tools_condition), use these wrapped tools:
+
+🔗 In your notes (human-in-loop code):
+    @tool
+    def human_assistance(query: str) -> str:
+        '''Request assistance from a human.'''
+        ...
+    tools = [human_assistance]
+    tool_node = ToolNode(tools=tools)
+
+We create separate tool wrappers so both patterns work!
+"""
+
+# Create @tool wrapped versions for LangGraph
+@tool
+def web_search_tool(query: str) -> str:
+    """Search the web for current information on any topic."""
+    result = smart_web_search(query)
+    return str(result)
+
+@tool  
+def indian_stock_tool(query: str) -> str:
+    """Search Indian stock market websites for financial information."""
+    result = indian_stock_search(query)
+    return str(result)
+
+@tool
+def weather_tool(city: str) -> str:
+    """Get current weather for any city."""
+    result = get_weather(city)
+    return str(result)
+
+@tool
+def datetime_tool() -> str:
+    """Get current date and time."""
+    result = get_current_datetime()
+    return str(result)
+
+@tool
+def news_tool(query: str) -> str:
+    """Search for recent news articles on any topic."""
+    result = search_news(query)
+    return str(result)
+
+# List of tools for LangGraph ToolNode (matches your notes!)
+LANGGRAPH_TOOLS = [
+    web_search_tool,
+    indian_stock_tool,
+    weather_tool,
+    datetime_tool,
+    news_tool
+]
+"""
+📖 How to use in LangGraph (matches your notes!):
+-------------------------------------------------
+from tools_service import LANGGRAPH_TOOLS
+
+tool_node = ToolNode(tools=LANGGRAPH_TOOLS)
+graph_builder.add_node("tools", tool_node)
+graph_builder.add_conditional_edges("chatbot", tools_condition)
+"""
 
 
 def get_tools_description() -> str:

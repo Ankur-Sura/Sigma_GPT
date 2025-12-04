@@ -76,43 +76,50 @@ from collections import defaultdict  # For conversation memory
 import requests       # For making HTTP requests (web search)
 import redis          # For Redis-based memory (optional)
 
-# ----- Import Tools from tools_service (now with @tool decorators!) -----
+# ----- Import Tools from tools_service -----
 from tools_service import (
+    # Regular functions for DIRECT calls (existing code uses these)
     smart_web_search,
     indian_stock_search,
     get_weather,
     get_current_datetime,
     search_news,
     get_tools_description,
-    AVAILABLE_TOOLS
+    AVAILABLE_TOOLS,
+    # @tool wrapped versions for LANGGRAPH (matches your notes!)
+    LANGGRAPH_TOOLS
 )
 """
 📖 Importing Tools from tools_service.py
 -----------------------------------------
-We import the search tools we created so the agent can use them.
-These tools now have @tool decorators (like your notes!)
+We import TWO types of tools:
 
+1. REGULAR FUNCTIONS (for direct calls):
+   - smart_web_search("query") → returns Dict
+   - get_weather("Mumbai") → returns Dict
+   - These are used throughout the existing code!
+
+2. LANGGRAPH_TOOLS (for ToolNode):
+   - @tool decorated wrappers
+   - Used with ToolNode and tools_condition
+   
 🔗 In your notes (human-in-loop code):
     @tool
     def human_assistance(query: str) -> str:
         '''Request assistance from a human.'''
         ...
-    
     tools = [human_assistance]
 
-SAME PATTERN! We define tools in tools_service.py with @tool and import them here.
+Same pattern! We have @tool decorated tools for LangGraph in LANGGRAPH_TOOLS.
 
-📌 TOOLS AVAILABLE (all with @tool decorator):
-----------------------------------------------
-1. smart_web_search - General web search (Tavily + DuckDuckGo)
-2. indian_stock_search - Indian finance sites only
-3. get_weather - Current weather
-4. get_current_datetime - Current date/time
-5. search_news - News articles
+📌 TOOLS AVAILABLE:
+------------------
+DIRECT CALLS: smart_web_search, indian_stock_search, get_weather, get_current_datetime, search_news
+LANGGRAPH:    LANGGRAPH_TOOLS (for ToolNode)
 """
 
-# ----- Create Tools List for ToolNode (matches your notes!) -----
-tools = [smart_web_search, indian_stock_search, get_weather, get_current_datetime, search_news]
+# ----- Tools List for ToolNode (matches your notes!) -----
+tools = LANGGRAPH_TOOLS
 """
 📖 Tools List for ToolNode
 --------------------------
@@ -120,7 +127,7 @@ tools = [smart_web_search, indian_stock_search, get_weather, get_current_datetim
     tools = [human_assistance]
     tool_node = ToolNode(tools=tools)
     
-Same pattern! We list all our @tool decorated functions.
+Same pattern! LANGGRAPH_TOOLS contains @tool decorated functions.
 """
 
 # ----- Import LangGraph Stock Research Workflow -----
