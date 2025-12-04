@@ -1173,6 +1173,11 @@ async def query_pdf(payload: dict):
     if not pdf_id or not question:
         raise HTTPException(status_code=400, detail="Missing pdf_id or question")
     
+    # 🆕 Handle "extract text" type requests specially
+    question_lower = question.lower().strip()
+    extract_patterns = ["extract", "show text", "full text", "all text", "get text", "read text", "what does it say", "what's in it", "what is in it", "contents", "content of"]
+    is_extract_request = any(pattern in question_lower for pattern in extract_patterns)
+    
     try:
         # 🆕 Ensure collection has pdf_id index before querying
         qdrant_client_kwargs = {"url": QDRANT_URL}
@@ -1292,10 +1297,33 @@ async def query_pdf(payload: dict):
         print(f"📊 Found {len(results)} results")
         
         if not results:
-            return {"answer": "I couldn't find any content for that PDF. Try re-uploading."}
+            return {"answer": "I couldn't find any content for that PDF. The PDF might be empty or failed to upload. Please try re-uploading."}
         
         # Sort by page number for logical flow
         sorted_results = sorted(results, key=lambda r: r.metadata.get("page", 0))
+        
+        # 🆕 If user wants to extract/see the text, return it directly
+        if is_extract_request:
+            print("📄 Extract request detected - returning full text")
+            text_by_page = {}
+            for r in sorted_results:
+                pg = r.metadata.get("page", 0)
+                if pg not in text_by_page:
+                    text_by_page[pg] = []
+                text_by_page[pg].append(r.page_content)
+            
+            # Build formatted output
+            output_parts = ["**📄 Extracted Text from PDF:**\n"]
+            for page_num in sorted(text_by_page.keys()):
+                page_text = "\n".join(text_by_page[page_num])
+                output_parts.append(f"**Page {page_num}:**\n{page_text}\n")
+            
+            full_text = "\n".join(output_parts)
+            # Limit to 4000 chars to avoid token limits
+            if len(full_text) > 4000:
+                full_text = full_text[:4000] + "\n\n... (text truncated, ask about specific sections)"
+            
+            return {"answer": full_text}
         
         # Build context
         context_chunks = []
