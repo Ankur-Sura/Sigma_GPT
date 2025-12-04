@@ -137,6 +137,9 @@
         max-width: 400px;
     }
 }
+
+/* Image preview styling */
+.gptDiv .image-preview {
     max-width: 100%;
     max-height: 420px;
     border-radius: 12px; /* soften image corners */
@@ -159,7 +162,8 @@
     background-color: var(--bubble-user);
     padding: 12px 18px; /* roomy user bubble */
     border-radius: 14px; /* rounded user bubble */
-    margin-left: 12rem; /* push bubble off edge */
+    border: 1px solid var(--border); /* visible border all around */
+    margin-left: auto; /* push to right side */
     max-width: 520px; /* keep width comfortable */
     width: fit-content;
     text-align: left;
