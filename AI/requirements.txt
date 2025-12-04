@@ -190,9 +190,17 @@ duckduckgo-search>=4.1.0
 redis>=7.0.1
 # 📖 Redis - Python client for Redis database
 # From: https://github.com/redis/redis-py
-# Why: Store conversation memory persistently
+# Why: Store conversation memory persistently + Message queue for async RAG
 # Used in: agent_service.py - for session memory
+# Used in: rag_service.py - for async PDF processing queue
 # 🔗 Your notes (advanced_rag/queue/connection.py): from redis import Redis
+
+rq>=1.15.1
+# 📖 RQ (Redis Queue) - Simple job queue for Python
+# From: https://python-rq.org/
+# Why: Async PDF processing - queue jobs, process in background
+# Used in: rag_service.py - for async RAG with Valkey/Redis message queue
+# 🔗 Your Notes Compare pattern: Queue(connection=Redis()) for async tasks
 
 pymongo>=4.0.0
 # 📖 PyMongo - Official MongoDB driver for Python

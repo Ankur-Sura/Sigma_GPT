@@ -89,6 +89,34 @@ Example:
 This is the same checkpointing pattern used in agent_service.py!
 """
 
+# ----- Redis/Valkey for Async Message Queue -----
+import redis
+from rq import Queue
+import json
+"""
+📖 Why Redis/Valkey + RQ for Async RAG?
+----------------------------------------
+Following your Notes Compare pattern for asynchronous processing:
+
+Problem with synchronous RAG:
+    - User uploads PDF → waits 2-5 minutes for processing
+    - OCR, chunking, embedding all happen in request handler
+    - Server blocked, user sees timeout errors
+
+Solution: Async RAG with message queue
+    - User uploads PDF → returns job_id immediately
+    - Background worker processes: OCR → chunk → embed → store
+    - User polls status endpoint or gets notified when done
+
+🔗 Your Notes Compare pattern:
+    from redis import Redis
+    from rq import Queue
+    queue = Queue(connection=Redis())
+    job = queue.enqueue(process_pdf, pdf_bytes, filename)
+    
+This is exactly what we're implementing here!
+"""
+
 # ----- FastAPI Imports -----
 from fastapi import APIRouter, HTTPException, UploadFile, File
 """
@@ -579,6 +607,42 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 ✔ Set in .env file: QDRANT_API_KEY=your-api-key-here
 """
 
+# =============================================================================
+#                     REDIS/VALKEY QUEUE SETUP (Async RAG)
+# =============================================================================
+
+REDIS_URL = os.getenv("REDIS_URL")  # e.g., redis://localhost:6379/0 or valkey://...
+"""
+📖 Redis/Valkey URL for Message Queue
+--------------------------------------
+Following your Notes Compare pattern for async RAG processing.
+
+If REDIS_URL is set, we use async RAG (queue jobs, process in background).
+If not set, we fall back to synchronous processing (current behavior).
+
+🔗 Your Notes Compare pattern:
+    from redis import Redis
+    from rq import Queue
+    queue = Queue(connection=Redis.from_url(REDIS_URL))
+"""
+
+_redis_connection = None
+_pdf_queue = None
+
+if REDIS_URL:
+    try:
+        _redis_connection = redis.Redis.from_url(REDIS_URL)
+        _redis_connection.ping()  # Test connection
+        _pdf_queue = Queue("pdf_processing", connection=_redis_connection)
+        print(f"✅ Redis/Valkey queue connected: {REDIS_URL}")
+    except Exception as e:
+        print(f"⚠️ Redis/Valkey queue unavailable: {e}")
+        print("   → Falling back to synchronous PDF processing")
+        _redis_connection = None
+        _pdf_queue = None
+else:
+    print("ℹ️ REDIS_URL not set - using synchronous PDF processing")
+
 # 🆕 Debug: Print Qdrant configuration at startup
 print("=" * 60)
 print("📊 RAG Service Configuration:")
@@ -586,6 +650,7 @@ print(f"   QDRANT_URL: {QDRANT_URL}")
 print(f"   QDRANT_COLLECTION: {QDRANT_COLLECTION}")
 print(f"   QDRANT_API_KEY: {'✅ Set' if QDRANT_API_KEY else '❌ NOT SET'}")
 print(f"   OPENAI_API_KEY: {'✅ Set' if os.getenv('OPENAI_API_KEY') else '❌ NOT SET'}")
+print(f"   REDIS_URL: {'✅ Set (Async RAG enabled)' if REDIS_URL and _pdf_queue else '❌ NOT SET (Sync mode)'}")
 print("=" * 60)
 
 # =============================================================================
@@ -1018,6 +1083,48 @@ def rag_query(payload: RAGQuery):
 #                     ENDPOINT: PDF STATUS (Diagnostic)
 # =============================================================================
 
+@rag_router.get("/pdf/job/{job_id}")
+async def get_pdf_job_status(job_id: str):
+    """
+    📖 PDF Job Status Endpoint (Async RAG)
+    --------------------------------------
+    Check the status of a PDF processing job.
+    
+    HTTP GET to: http://localhost:8000/pdf/job/{job_id}
+    
+    Returns:
+    - "queued": Job is waiting in queue
+    - "processing": Job is being processed
+    - "completed": Job finished successfully (includes pdf_id, chunks, etc.)
+    - "failed": Job failed (includes error message)
+    
+    🔗 Used with async RAG when REDIS_URL is set
+    """
+    if not _redis_connection:
+        raise HTTPException(
+            status_code=400,
+            detail="Async RAG not enabled. Set REDIS_URL to use job status tracking."
+        )
+    
+    try:
+        # Get job status from Redis
+        status_data = _redis_connection.get(f"pdf_job:{job_id}:status")
+        
+        if not status_data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Job {job_id} not found. It may have expired (TTL: 1 hour) or never existed."
+            )
+        
+        status = json.loads(status_data)
+        return status
+        
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Invalid job status data")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get job status: {str(e)}")
+
+
 @rag_router.get("/pdf/status")
 async def pdf_status():
     """
@@ -1027,6 +1134,7 @@ async def pdf_status():
     - Qdrant connection status
     - Collection info
     - Environment configuration
+    - Redis/Valkey queue status
     
     HTTP GET to: http://localhost:8000/pdf/status
     """
@@ -1037,11 +1145,23 @@ async def pdf_status():
         "qdrant_api_key_set": bool(QDRANT_API_KEY),
         "openai_api_key_set": bool(os.getenv("OPENAI_API_KEY")),
         "ocr_available": convert_from_bytes is not None and pytesseract is not None,
+        "async_rag_enabled": bool(_pdf_queue and _redis_connection),
+        "redis_url_set": bool(REDIS_URL),
+        "redis_connected": False,
         "qdrant_connected": False,
         "collection_exists": False,
         "collection_points": 0,
         "error": None
     }
+    
+    # Test Redis connection
+    if REDIS_URL:
+        try:
+            test_redis = redis.Redis.from_url(REDIS_URL)
+            test_redis.ping()
+            status["redis_connected"] = True
+        except Exception as e:
+            status["redis_error"] = str(e)
     
     try:
         # Test Qdrant connection
@@ -1071,39 +1191,336 @@ async def pdf_status():
 
 
 # =============================================================================
+#                     BACKGROUND WORKER: PDF PROCESSING
+# =============================================================================
+
+def process_pdf_background(pdf_bytes: bytes, filename: str, job_id: str):
+    """
+    📖 Background Worker Function for Async PDF Processing
+    -------------------------------------------------------
+    This function runs in a background worker (RQ) to process PDFs asynchronously.
+    
+    Following your Notes Compare pattern:
+        - Extract text + OCR
+        - Chunk text
+        - Create embeddings
+        - Store in Qdrant
+        - Update job status in Redis
+    
+    Args:
+        pdf_bytes: PDF file content as bytes
+        filename: Original filename
+        job_id: Unique job identifier for status tracking
+    """
+    try:
+        # Update status: processing
+        if _redis_connection:
+            _redis_connection.setex(
+                f"pdf_job:{job_id}:status",
+                3600,  # 1 hour TTL
+                json.dumps({"status": "processing", "progress": "Extracting text..."})
+            )
+        
+        # This is the EXACT same logic from the synchronous upload_pdf function
+        # We extract it here so it can run in background
+        
+        reader = PdfReader(BytesIO(pdf_bytes))
+        pages = []
+        full_text_parts = []
+        
+        # Check OCR availability
+        ocr_space_available = is_ocr_space_available()
+        tesseract_available = pytesseract is not None
+        can_convert_to_image = convert_from_bytes is not None
+        ocr_available = (ocr_space_available or tesseract_available) and can_convert_to_image
+        
+        print(f"📄 [Job {job_id}] Processing {len(reader.pages)} pages...")
+        
+        # Process each page (same logic as before)
+        for idx, page in enumerate(reader.pages):
+            pdf_text = (page.extract_text() or "").strip()
+            ocr_text = ""
+            
+            if ocr_available:
+                try:
+                    images = convert_from_bytes(
+                        pdf_bytes,
+                        first_page=idx + 1,
+                        last_page=idx + 1,
+                        dpi=500
+                    )
+                    if images:
+                        from PIL import ImageEnhance, ImageFilter
+                        processed_image = ImageEnhance.Contrast(images[0]).enhance(1.5)
+                        processed_image = processed_image.filter(ImageFilter.SHARPEN)
+                        
+                        img_buffer = BytesIO()
+                        processed_image.save(img_buffer, format='PNG')
+                        img_bytes = img_buffer.getvalue()
+                        
+                        if ocr_space_available:
+                            ocr_text = ocr_space_for_pdf(img_bytes)
+                        if not ocr_text.strip() and tesseract_available:
+                            ocr_text = pytesseract.image_to_string(processed_image) or ""
+                except Exception as e:
+                    print(f"⚠️ [Job {job_id}] Page {idx + 1}: OCR failed - {e}")
+                    ocr_text = ""
+            
+            # Clean text
+            if pdf_text.strip():
+                pdf_text = clean_ocr_text(pdf_text)
+            if ocr_text.strip():
+                ocr_text = clean_ocr_text(ocr_text)
+            
+            # Combine text (same logic as before)
+            combined_text = ""
+            def looks_like_code(text: str) -> bool:
+                code_indicators = [
+                    'public ', 'private ', 'class ', 'static ', 'void ', 'int ',
+                    'def ', 'function ', 'return ', 'import ', 'from ',
+                    '{', '}', '()', ';', '==', '!=', '&&', '||',
+                    'this.', 'self.', 'Node ', 'String ', 'boolean '
+                ]
+                return sum(1 for ind in code_indicators if ind in text) >= 3
+            
+            def format_as_code(text: str) -> str:
+                if 'public class' in text or 'static void' in text:
+                    lang = 'java'
+                elif 'def ' in text and ':' in text:
+                    lang = 'python'
+                elif 'function ' in text or 'const ' in text:
+                    lang = 'javascript'
+                else:
+                    lang = ''
+                return f"\n```{lang}\n{text}\n```\n"
+            
+            if pdf_text and ocr_text:
+                combined_text = f"**📄 Text Content:**\n{pdf_text}"
+                ocr_lines = [line.strip() for line in ocr_text.split('\n') if line.strip()]
+                pdf_lower = pdf_text.lower()
+                unique_ocr_lines = [
+                    line for line in ocr_lines
+                    if (len(line) > 5 and any(c.isalpha() for c in line) and
+                        not any(line.lower() in pdf_lower or pdf_lower in line.lower()[:50] for _ in [1]))
+                ]
+                if unique_ocr_lines:
+                    ocr_content = "\n".join(unique_ocr_lines)
+                    if looks_like_code(ocr_content):
+                        combined_text += "\n\n**📝 Code from Image:**" + format_as_code(ocr_content)
+                    else:
+                        combined_text += "\n\n**📷 Additional content from images:**\n" + ocr_content
+            elif pdf_text:
+                combined_text = pdf_text
+            elif ocr_text:
+                if looks_like_code(ocr_text):
+                    combined_text = "**📝 Code extracted from scanned page:**" + format_as_code(ocr_text)
+                else:
+                    combined_text = ocr_text
+            else:
+                combined_text = ""
+            
+            pages.append({"page": idx + 1, "text": combined_text})
+            full_text_parts.append(f"[Page {idx + 1}]\n{combined_text}")
+        
+        full_text = "\n\n".join(full_text_parts)
+        
+        if not any((p["text"] or "").strip() for p in pages):
+            if not ocr_available:
+                raise Exception("Scanned PDF but OCR unavailable")
+            else:
+                raise Exception("No text extracted from PDF")
+        
+        # Update status: chunking
+        if _redis_connection:
+            _redis_connection.setex(
+                f"pdf_job:{job_id}:status",
+                3600,
+                json.dumps({"status": "processing", "progress": "Chunking text..."})
+            )
+        
+        # Chunk text
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=800,
+            chunk_overlap=200
+        )
+        
+        pdf_id = str(uuid4())
+        docs = []
+        for p in pages:
+            chunks = splitter.split_text(p["text"])
+            for chunk in chunks:
+                docs.append(
+                    Document(
+                        page_content=chunk,
+                        metadata={
+                            "pdf_id": pdf_id,
+                            "filename": filename,
+                            "page": p["page"]
+                        }
+                    )
+                )
+        
+        # Update status: embedding
+        if _redis_connection:
+            _redis_connection.setex(
+                f"pdf_job:{job_id}:status",
+                3600,
+                json.dumps({"status": "processing", "progress": f"Creating embeddings for {len(docs)} chunks..."})
+            )
+        
+        # Store in Qdrant
+        if docs:
+            qdrant_client_kwargs = {"url": QDRANT_URL}
+            if QDRANT_API_KEY:
+                qdrant_client_kwargs["api_key"] = QDRANT_API_KEY
+            
+            qdrant_client = QdrantClient(**qdrant_client_kwargs)
+            
+            # Ensure collection exists with indexes
+            try:
+                collection_info = qdrant_client.get_collection(QDRANT_COLLECTION)
+                for index_path in ["metadata.pdf_id", "pdf_id"]:
+                    try:
+                        qdrant_client.create_payload_index(
+                            collection_name=QDRANT_COLLECTION,
+                            field_name=index_path,
+                            field_schema=PayloadSchemaType.KEYWORD
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            
+            doc_connection_kwargs = {
+                "documents": docs,
+                "embedding": embedding_model,
+                "url": QDRANT_URL,
+                "collection_name": QDRANT_COLLECTION
+            }
+            if QDRANT_API_KEY:
+                doc_connection_kwargs["api_key"] = QDRANT_API_KEY
+            
+            QdrantVectorStore.from_documents(**doc_connection_kwargs)
+            print(f"✅ [Job {job_id}] Stored {len(docs)} chunks in Qdrant")
+        
+        # Update status: completed
+        result = {
+            "status": "completed",
+            "pdf_id": pdf_id,
+            "filename": filename,
+            "total_pages": len(pages),
+            "total_chunks": len(docs),
+            "pages": pages,
+            "full_text": full_text
+        }
+        
+        if _redis_connection:
+            _redis_connection.setex(
+                f"pdf_job:{job_id}:status",
+                3600,
+                json.dumps(result)
+            )
+            _redis_connection.setex(
+                f"pdf_job:{job_id}:result",
+                3600,
+                json.dumps(result)
+            )
+        
+        return result
+        
+    except Exception as e:
+        error_result = {
+            "status": "failed",
+            "error": str(e)
+        }
+        if _redis_connection:
+            _redis_connection.setex(
+                f"pdf_job:{job_id}:status",
+                3600,
+                json.dumps(error_result)
+            )
+        print(f"❌ [Job {job_id}] PDF processing failed: {e}")
+        raise
+
+
+# =============================================================================
 #                     ENDPOINT: PDF UPLOAD
 # =============================================================================
 
 @rag_router.post("/pdf/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     """
-    📖 PDF Upload Endpoint
-    ----------------------
+    📖 PDF Upload Endpoint (Async RAG with Valkey/Redis Queue)
+    -----------------------------------------------------------
     Uploads and indexes a PDF for RAG queries.
+    
+    🔄 ASYNC MODE (if REDIS_URL is set):
+        - Queues job in Redis/Valkey message queue
+        - Returns job_id immediately
+        - User polls /pdf/job/{job_id} for status
+        - Background worker processes: OCR → chunk → embed → store
+    
+    🔄 SYNC MODE (if REDIS_URL not set):
+        - Processes PDF synchronously (original behavior)
+        - Returns result immediately (may take 2-5 minutes)
     
     HTTP POST to: http://localhost:8000/pdf/upload
     Body: multipart/form-data with file
     
-    THE INDEXING PIPELINE:
-    1. Receive PDF file
-    2. Extract text page-by-page (with OCR fallback for scanned PDFs)
-    3. Split text into chunks
-    4. Create embeddings for each chunk
-    5. Store embeddings in Qdrant
-    6. Return PDF ID for future queries
-    
-    🔗 THIS IS EXACTLY YOUR NOTES (04-RAG/indexing.py)!
+    🔗 Following your Notes Compare async RAG pattern!
     """
     
     # Validate file type
     if file.content_type and "pdf" not in file.content_type.lower():
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     
+    # Read PDF content
+    content = await file.read()
+    
+    # =============================================================================
+    # ASYNC MODE: Queue job in Redis/Valkey
+    # =============================================================================
+    if _pdf_queue and _redis_connection:
+        try:
+            job_id = str(uuid4())
+            
+            # Queue the job
+            job = _pdf_queue.enqueue(
+                process_pdf_background,
+                pdf_bytes=content,
+                filename=file.filename or "uploaded.pdf",
+                job_id=job_id,
+                job_timeout="10m"  # 10 minute timeout for large PDFs
+            )
+            
+            # Set initial status
+            _redis_connection.setex(
+                f"pdf_job:{job_id}:status",
+                3600,
+                json.dumps({
+                    "status": "queued",
+                    "progress": "Job queued, waiting for worker...",
+                    "job_id": job_id
+                })
+            )
+            
+            print(f"✅ PDF upload queued: job_id={job_id}, filename={file.filename}")
+            
+            return {
+                "status": "queued",
+                "job_id": job_id,
+                "message": "PDF upload queued for processing. Use /pdf/job/{job_id} to check status.",
+                "check_status_url": f"/pdf/job/{job_id}"
+            }
+        except Exception as e:
+            print(f"⚠️ Failed to queue PDF job: {e}")
+            print("   → Falling back to synchronous processing")
+            # Fall through to synchronous processing
+    
+    # =============================================================================
+    # SYNC MODE: Process immediately (original behavior)
+    # =============================================================================
     try:
-        # Step 1: Read PDF Content
-        # ------------------------
-        # Read the uploaded file into memory as bytes
-        content = await file.read()
         
         # Create a BytesIO object (acts like a file in memory)
         # PdfReader needs a file-like object

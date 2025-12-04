@@ -1114,14 +1114,14 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
     print(f"📦 Building packages: {source} → {destination}")
     
     try:
-        # Search 1: MakeMyTrip packages
-        mmt_query = f"MakeMyTrip holiday package {source} to {destination} flight hotel"
-        mmt_results = smart_web_search(mmt_query, max_results=3)
+        # Search 1: MakeMyTrip packages - More specific query for actual package pages
+        mmt_query = f"site:makemytrip.com/holidays {destination} packages from {source} price booking"
+        mmt_results = smart_web_search(mmt_query, max_results=5)
         print(f"✅ Found MakeMyTrip packages")
         
-        # Search 2: Yatra packages
-        yatra_query = f"Yatra travel package {source} to {destination} best deals"
-        yatra_results = smart_web_search(yatra_query, max_results=3)
+        # Search 2: Yatra packages - More specific query
+        yatra_query = f"site:yatra.com {destination} tour packages from {source} price itinerary"
+        yatra_results = smart_web_search(yatra_query, max_results=5)
         print(f"✅ Found Yatra packages")
         
         # Gather all previous node outputs
@@ -1148,21 +1148,50 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         {state.get('emergency_info', 'Not available')}
         """
         
-        # Extract actual URLs from search results for clickable links
-        mmt_urls = []
-        yatra_urls = []
+        # Extract actual URLs from search results WITH titles and descriptions
+        # This helps the LLM use specific package URLs, not generic landing pages
+        mmt_packages = []
+        yatra_packages = []
         
         if isinstance(mmt_results, dict):
             for r in mmt_results.get("results", []):
                 url = r.get("url", "")
+                title = r.get("title", "")
+                snippet = r.get("content", r.get("snippet", ""))
                 if url and "makemytrip" in url.lower():
-                    mmt_urls.append(url)
+                    # Prioritize URLs with /holidays/ path (actual package pages)
+                    is_package_page = "/holidays/" in url or "/india-tour" in url or "package" in url.lower()
+                    mmt_packages.append({
+                        "url": url,
+                        "title": title,
+                        "description": snippet[:200] if snippet else "",
+                        "is_package_page": is_package_page
+                    })
         
         if isinstance(yatra_results, dict):
             for r in yatra_results.get("results", []):
                 url = r.get("url", "")
+                title = r.get("title", "")
+                snippet = r.get("content", r.get("snippet", ""))
                 if url and "yatra" in url.lower():
-                    yatra_urls.append(url)
+                    is_package_page = "/holidays/" in url or "-packages" in url or "/tour-" in url
+                    yatra_packages.append({
+                        "url": url,
+                        "title": title,
+                        "description": snippet[:200] if snippet else "",
+                        "is_package_page": is_package_page
+                    })
+        
+        # Sort to prioritize actual package pages
+        mmt_packages.sort(key=lambda x: x.get("is_package_page", False), reverse=True)
+        yatra_packages.sort(key=lambda x: x.get("is_package_page", False), reverse=True)
+        
+        # Get best URLs (actual package pages preferred)
+        best_mmt_url = mmt_packages[0]["url"] if mmt_packages else f"https://www.makemytrip.com/holidays/{destination.lower()}-packages"
+        best_yatra_url = yatra_packages[0]["url"] if yatra_packages else f"https://www.yatra.com/india-tour-packages/{destination.lower()}-packages"
+        
+        print(f"📎 Best MakeMyTrip URL: {best_mmt_url}")
+        print(f"📎 Best Yatra URL: {best_yatra_url}")
         
         # Use LLM to create final packages
         summary_prompt = f"""
@@ -1171,15 +1200,21 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         USER PREFERENCES:
         {json.dumps(preferences, indent=2)}
         
-        WEBSITE PACKAGES FOUND (with actual URLs!):
+        ═══════════════════════════════════════════════════════════════
+        ACTUAL PACKAGE LINKS FOUND (USE THESE EXACT URLs!):
+        ═══════════════════════════════════════════════════════════════
         
-        📌 MakeMyTrip Results:
-        {json.dumps(mmt_results, indent=2) if isinstance(mmt_results, dict) else mmt_results}
-        Actual URLs found: {mmt_urls if mmt_urls else ['https://www.makemytrip.com/holidays/']}
+        📌 MakeMyTrip Packages Found:
+        {json.dumps(mmt_packages[:3], indent=2) if mmt_packages else "No specific packages found"}
         
-        📌 Yatra Results:
-        {json.dumps(yatra_results, indent=2) if isinstance(yatra_results, dict) else yatra_results}
-        Actual URLs found: {yatra_urls if yatra_urls else ['https://www.yatra.com/holidays/']}
+        ✅ **USE THIS URL FOR MAKEMYTRIP BOOKING:** {best_mmt_url}
+        
+        📌 Yatra Packages Found:
+        {json.dumps(yatra_packages[:3], indent=2) if yatra_packages else "No specific packages found"}
+        
+        ✅ **USE THIS URL FOR YATRA BOOKING:** {best_yatra_url}
+        
+        ═══════════════════════════════════════════════════════════════
         
         ALL RESEARCH:
         {all_info}
@@ -1219,9 +1254,9 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         - **Day 3:** [Second major activity/beach/site]
         - **Day 4:** Shopping, local cuisine, Departure
         
-        🔗 **Booking Link:** [Book on MakeMyTrip]({mmt_urls[0] if mmt_urls else 'https://www.makemytrip.com/holidays/'})
+        🔗 **Booking Link:** [Book on MakeMyTrip]({best_mmt_url})
         
-        *URL: {mmt_urls[0] if mmt_urls else 'https://www.makemytrip.com/holidays/'}*
+        *Direct Link: {best_mmt_url}*
         
         ✅ **WHY RANK #1:** [Explain: Best value for money / Most inclusions / Trusted brand / Best reviews]
         
@@ -1243,9 +1278,9 @@ def package_builder_node(state: TravelPlannerState) -> TravelPlannerState:
         - **Day 3:** [Adventure activities]
         - **Day 4-5:** [Beach/relaxation/local exploration]
         
-        🔗 **Booking Link:** [Book on Yatra]({yatra_urls[0] if yatra_urls else 'https://www.yatra.com/holidays/'})
+        🔗 **Booking Link:** [Book on Yatra]({best_yatra_url})
         
-        *URL: {yatra_urls[0] if yatra_urls else 'https://www.yatra.com/holidays/'}*
+        *Direct Link: {best_yatra_url}*
         
         🔄 **WHY RANK #2:** [Explain: Good alternative / Different hotel options / More flexibility / Slightly higher price but more customization]
         
