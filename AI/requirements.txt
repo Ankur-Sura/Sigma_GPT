@@ -119,6 +119,13 @@ langgraph>=0.2.0,<1.0.0
 # Why: Required by stock_graph.py for building agent workflows
 # Used in: stock_graph.py - from langgraph.graph import StateGraph, START, END
 
+langgraph-checkpoint-mongodb>=0.1.0,<1.0.0
+# 📖 LangGraph Checkpoint MongoDB - MongoDB checkpoint saver for LangGraph
+# From: https://pypi.org/project/langgraph-checkpoint-mongodb/
+# Why: Required by solo_trip_graph.py and agent_service.py for MongoDB checkpoints
+# Used in: solo_trip_graph.py - from langgraph.checkpoint.mongodb import MongoDBSaver
+# Used in: agent_service.py - from langgraph.checkpoint.mongodb import MongoDBSaver
+
 # =============================================================================
 #                     VECTOR DATABASE
 # =============================================================================
