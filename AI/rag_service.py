@@ -260,56 +260,51 @@ try:
 except Exception:
     Image = None
 
-# EasyOCR - Pure Python OCR (works on Render!)
-# 🆕 FULLY LAZY LOADING - Don't import at startup to avoid blocking server start
-_pdf_easyocr_reader = None
-_pdf_easyocr_available = None  # None = not checked yet
+# =============================================================================
+# OCR.space API for scanned PDFs (fast, cloud-based)
+# =============================================================================
+OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "K85482928388957")  # Free demo key
 
-def get_pdf_easyocr_reader():
-    """Lazy load EasyOCR only when first needed for PDF processing"""
-    global _pdf_easyocr_reader, _pdf_easyocr_available
+def ocr_space_for_pdf(image_bytes: bytes) -> str:
+    """Call OCR.space API for PDF page OCR"""
+    import base64
+    import requests
     
-    # First time check
-    if _pdf_easyocr_available is None:
-        try:
-            import easyocr
-            _pdf_easyocr_available = True
-        except Exception as e:
-            print(f"⚠️ EasyOCR not available for PDFs: {e}")
-            _pdf_easyocr_available = False
-            return None
-    
-    if not _pdf_easyocr_available:
-        return None
-    
-    # Initialize reader on first use
-    if _pdf_easyocr_reader is None:
-        try:
-            import easyocr
-            print("🔤 Initializing EasyOCR for PDF processing (may take 30-60 seconds)...")
-            _pdf_easyocr_reader = easyocr.Reader(['en'], gpu=False)
-            print("✅ EasyOCR initialized for PDFs")
-        except Exception as e:
-            print(f"⚠️ EasyOCR initialization failed for PDFs: {e}")
-            _pdf_easyocr_available = False
-            return None
-    
-    return _pdf_easyocr_reader
+    try:
+        base64_image = base64.b64encode(image_bytes).decode('utf-8')
+        
+        payload = {
+            'apikey': OCR_SPACE_API_KEY,
+            'base64Image': f'data:image/png;base64,{base64_image}',
+            'language': 'eng',
+            'isOverlayRequired': False,
+            'OCREngine': 2
+        }
+        
+        response = requests.post(
+            'https://api.ocr.space/parse/image',
+            data=payload,
+            timeout=30
+        )
+        
+        result = response.json()
+        
+        if result.get('IsErroredOnProcessing'):
+            return ""
+        
+        parsed_results = result.get('ParsedResults', [])
+        if parsed_results:
+            return parsed_results[0].get('ParsedText', '').strip()
+        
+        return ""
+    except Exception as e:
+        print(f"⚠️ OCR.space API failed for PDF: {e}")
+        return ""
 
-def is_pdf_easyocr_available():
-    global _pdf_easyocr_available
-    if _pdf_easyocr_available is None:
-        try:
-            import easyocr
-            _pdf_easyocr_available = True
-        except:
-            _pdf_easyocr_available = False
-    return _pdf_easyocr_available
+def is_ocr_space_available():
+    return bool(OCR_SPACE_API_KEY)
 
-# Variable for compatibility
-easyocr = None  # Will be imported lazily
-
-# Tesseract - Fallback (requires system install)
+# Tesseract - Local fallback (requires system install)
 try:
     import pytesseract
 except Exception:
@@ -935,57 +930,50 @@ async def upload_pdf(file: UploadFile = File(...)):
         full_text_parts = []
         
         # Check which OCR engines are available
-        easyocr_available = is_pdf_easyocr_available()
+        ocr_space_available = is_ocr_space_available()
         tesseract_available = pytesseract is not None and convert_from_bytes is not None
-        ocr_available = easyocr_available or tesseract_available
+        ocr_available = ocr_space_available or tesseract_available
         
         for idx, page in enumerate(reader.pages):
             # Try to extract text normally first
             page_text = page.extract_text() or ""
             
             # OCR Fallback: If page has no text and OCR is available
-            if len(page_text.strip()) < 10 and ocr_available:
+            if len(page_text.strip()) < 10 and ocr_available and convert_from_bytes is not None:
                 print(f"📄 Page {idx + 1}: Low text content, attempting OCR...")
                 
-                # Try EasyOCR first (works on Render!)
-                if easyocr_available and convert_from_bytes is not None:
-                    try:
-                        # Convert PDF page to image
-                        images = convert_from_bytes(
-                            content,
-                            first_page=idx + 1,
-                            last_page=idx + 1,
-                            dpi=200  # Lower DPI for faster processing
-                        )
-                        if images:
-                            import numpy as np
-                            img_array = np.array(images[0])
-                            reader_ocr = get_pdf_easyocr_reader()
-                            if reader_ocr:
-                                results = reader_ocr.readtext(img_array)
-                                ocr_text = "\n".join([r[1] for r in results])
-                                if ocr_text.strip():
-                                    page_text = ocr_text
-                                    print(f"✅ EasyOCR extracted text from page {idx + 1}")
-                    except Exception as e:
-                        print(f"⚠️ EasyOCR failed for page {idx + 1}: {e}")
-                
-                # Fallback to Tesseract if EasyOCR didn't work
-                if len(page_text.strip()) < 10 and tesseract_available:
-                    try:
-                        images = convert_from_bytes(
-                            content,
-                            first_page=idx + 1,
-                            last_page=idx + 1,
-                            dpi=300
-                        )
-                        if images:
+                try:
+                    # Convert PDF page to image
+                    images = convert_from_bytes(
+                        content,
+                        first_page=idx + 1,
+                        last_page=idx + 1,
+                        dpi=150  # Lower DPI for faster processing
+                    )
+                    
+                    if images:
+                        # Convert PIL image to bytes for OCR.space
+                        from io import BytesIO
+                        img_buffer = BytesIO()
+                        images[0].save(img_buffer, format='PNG')
+                        img_bytes = img_buffer.getvalue()
+                        
+                        # Try OCR.space API first (fast!)
+                        if ocr_space_available:
+                            ocr_text = ocr_space_for_pdf(img_bytes)
+                            if ocr_text.strip():
+                                page_text = ocr_text
+                                print(f"✅ OCR.space extracted text from page {idx + 1}")
+                        
+                        # Fallback to Tesseract if OCR.space didn't work
+                        if len(page_text.strip()) < 10 and tesseract_available:
                             ocr_text = pytesseract.image_to_string(images[0])
                             if ocr_text.strip():
                                 page_text = ocr_text
                                 print(f"✅ Tesseract extracted text from page {idx + 1}")
-                    except Exception as e:
-                        print(f"⚠️ Tesseract failed for page {idx + 1}: {e}")
+                                
+                except Exception as e:
+                    print(f"⚠️ OCR failed for page {idx + 1}: {e}")
             
             pages.append({"page": idx + 1, "text": page_text})
             full_text_parts.append(f"[Page {idx + 1}]\n{page_text}")

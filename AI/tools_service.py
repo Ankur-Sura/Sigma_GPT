@@ -195,55 +195,83 @@ except Exception:
     ImageFilter = None
     np = None
 
-# EasyOCR - Pure Python OCR (works on Render free tier!)
-# 🆕 FULLY LAZY LOADING - Don't import at startup to avoid blocking server start
-_easyocr_reader = None
-_easyocr_available = None  # None = not checked yet
+# =============================================================================
+# OCR.space API - Free, fast cloud OCR (works on Render!)
+# =============================================================================
+# Get free API key from: https://ocr.space/ocrapi
+# Free tier: 25,000 requests/month
+# =============================================================================
 
-def get_easyocr_reader():
-    """Lazy load EasyOCR only when first needed"""
-    global _easyocr_reader, _easyocr_available
-    
-    # First time check
-    if _easyocr_available is None:
-        try:
-            import easyocr
-            _easyocr_available = True
-            print("✅ EasyOCR module available")
-        except Exception as e:
-            print(f"⚠️ EasyOCR not available: {e}")
-            _easyocr_available = False
-            return None
-    
-    if not _easyocr_available:
-        return None
-    
-    # Initialize reader on first use
-    if _easyocr_reader is None:
-        try:
-            import easyocr
-            print("🔤 Initializing EasyOCR (first use, may take 30-60 seconds)...")
-            _easyocr_reader = easyocr.Reader(['en'], gpu=False)  # CPU mode for Render
-            print("✅ EasyOCR initialized")
-        except Exception as e:
-            print(f"⚠️ EasyOCR initialization failed: {e}")
-            _easyocr_available = False
-            return None
-    
-    return _easyocr_reader
+OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "K85482928388957")  # Free demo key (limited)
 
-# For checking if easyocr is available without initializing
-def is_easyocr_available():
-    global _easyocr_available
-    if _easyocr_available is None:
-        try:
-            import easyocr
-            _easyocr_available = True
-        except:
-            _easyocr_available = False
-    return _easyocr_available
+def ocr_space_api(image_content: bytes, filename: str = "image.png") -> str:
+    """
+    Call OCR.space API for fast, accurate OCR.
+    
+    Args:
+        image_content: Raw image bytes
+        filename: Original filename for content type detection
+    
+    Returns:
+        Extracted text or empty string on failure
+    """
+    import base64
+    
+    try:
+        # Convert image to base64
+        base64_image = base64.b64encode(image_content).decode('utf-8')
+        
+        # Determine file type
+        if filename.lower().endswith('.png'):
+            file_type = 'image/png'
+        elif filename.lower().endswith(('.jpg', '.jpeg')):
+            file_type = 'image/jpeg'
+        else:
+            file_type = 'image/png'
+        
+        # Prepare API request
+        payload = {
+            'apikey': OCR_SPACE_API_KEY,
+            'base64Image': f'data:{file_type};base64,{base64_image}',
+            'language': 'eng',
+            'isOverlayRequired': False,
+            'detectOrientation': True,
+            'scale': True,
+            'OCREngine': 2  # Engine 2 is better for most images
+        }
+        
+        print("🔤 Calling OCR.space API...")
+        response = requests.post(
+            'https://api.ocr.space/parse/image',
+            data=payload,
+            timeout=30
+        )
+        
+        result = response.json()
+        
+        if result.get('IsErroredOnProcessing'):
+            error_msg = result.get('ErrorMessage', ['Unknown error'])
+            print(f"⚠️ OCR.space error: {error_msg}")
+            return ""
+        
+        # Extract text from all parsed results
+        parsed_results = result.get('ParsedResults', [])
+        if parsed_results:
+            text = parsed_results[0].get('ParsedText', '')
+            print(f"✅ OCR.space extracted {len(text)} characters")
+            return text.strip()
+        
+        return ""
+        
+    except Exception as e:
+        print(f"⚠️ OCR.space API failed: {e}")
+        return ""
 
-# Tesseract - Fallback OCR (requires system install)
+def is_ocr_space_available():
+    """Check if OCR.space API key is configured"""
+    return bool(OCR_SPACE_API_KEY)
+
+# Tesseract - Local fallback OCR (requires system install)
 try:
     import pytesseract
 except Exception:
@@ -1364,62 +1392,31 @@ async def ocr_image(
     if upload.content_type and not upload.content_type.lower().startswith(("image/", "application/octet-stream")):
         raise HTTPException(status_code=400, detail="Only image files are supported")
     
-    # Check if OCR dependencies are installed
-    if not Image:
-        raise HTTPException(
-            status_code=503,
-            detail="OCR service is currently unavailable. Image processing library not installed."
-        )
-    
-    # Check if we have ANY OCR engine available
-    easyocr_available = is_easyocr_available()
-    tesseract_available = pytesseract is not None
-    
-    if not easyocr_available and not tesseract_available:
-        raise HTTPException(
-            status_code=503,
-            detail="OCR service is currently unavailable. No OCR engine installed."
-        )
-    
     try:
         # Read image content
         content = await upload.read()
-        
-        # Preprocess image for better OCR
-        prepped = preprocess_for_ocr(content)
+        filename = upload.filename or "image.png"
         
         text = ""
         ocr_engine_used = "none"
         
-        # 🆕 TRY EASYOCR FIRST (pure Python, works on Render!)
-        if easyocr_available:
+        # 🆕 TRY OCR.SPACE API FIRST (fast, cloud-based, works on Render!)
+        if is_ocr_space_available():
             try:
-                print("🔤 Attempting EasyOCR...")
-                reader = get_easyocr_reader()
-                if reader:
-                    # Convert PIL Image to numpy array for EasyOCR
-                    import numpy as np
-                    img_array = np.array(prepped)
-                    
-                    # Run EasyOCR
-                    results = reader.readtext(img_array)
-                    
-                    # Extract text from results
-                    text_parts = [result[1] for result in results]
-                    text = "\n".join(text_parts).strip()
-                    ocr_engine_used = "EasyOCR"
-                    print(f"✅ EasyOCR extracted {len(text)} characters")
-            except Exception as easy_err:
-                print(f"⚠️ EasyOCR failed: {easy_err}")
+                text = ocr_space_api(content, filename)
+                if text:
+                    ocr_engine_used = "OCR.space"
+            except Exception as ocr_err:
+                print(f"⚠️ OCR.space failed: {ocr_err}")
                 text = ""
         
-        # FALLBACK TO TESSERACT if EasyOCR failed or not available
-        if not text and tesseract_available:
+        # FALLBACK TO TESSERACT if OCR.space failed and Tesseract is available
+        if not text and pytesseract is not None and Image is not None:
             try:
-                print("🔤 Attempting Tesseract OCR...")
+                print("🔤 Attempting Tesseract OCR (fallback)...")
+                prepped = preprocess_for_ocr(content)
                 config = "--psm 3 --oem 3"
                 
-                # Try with Hindi support first (includes ₹ Rupee symbol)
                 try:
                     available_langs = pytesseract.get_languages()
                     if 'hin' in available_langs:
@@ -1433,10 +1430,15 @@ async def ocr_image(
                 print(f"✅ Tesseract extracted {len(text)} characters")
             except Exception as tess_err:
                 print(f"⚠️ Tesseract failed: {tess_err}")
-                if not text:
-                    raise tess_err
         
-        # 🆕 Post-processing: Fix common OCR mistakes for currency symbols
+        # If no OCR worked
+        if not text:
+            raise HTTPException(
+                status_code=503,
+                detail="OCR failed. Please try again or use a clearer image."
+            )
+        
+        # Post-processing: Fix common OCR mistakes for currency symbols
         text = fix_currency_symbols(text)
         
         if not text:

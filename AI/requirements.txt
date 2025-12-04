@@ -208,18 +208,13 @@ pymongo>=4.0.0
 #                     OCR (IMAGE TO TEXT)
 # =============================================================================
 
-easyocr>=1.7.0
-# 📖 EasyOCR - Ready-to-use OCR with deep learning
-# From: https://github.com/JaidedAI/EasyOCR
-# Why: Pure Python OCR - NO SYSTEM INSTALLATION NEEDED!
-# Used in: tools_service.py, rag_service.py
-# 📌 Works on Render free tier (unlike Tesseract)
-# 📌 Supports 80+ languages including English, Hindi, etc.
+# 🆕 Using OCR.space API instead of EasyOCR (much faster, no heavy models)
+# EasyOCR removed because it's too slow on Render free tier (200MB+ models)
 
 pytesseract>=0.3.10
-# 📖 Pytesseract - Python wrapper for Tesseract OCR (fallback)
+# 📖 Pytesseract - Python wrapper for Tesseract OCR (local fallback)
 # From: https://github.com/madmaze/pytesseract
-# Why: Fallback OCR if EasyOCR fails
+# Why: Fallback OCR if available locally
 # 📌 Requires Tesseract on system (won't work on Render free tier)
 
 pdf2image>=1.17.0
