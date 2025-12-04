@@ -420,16 +420,26 @@ def _sanitize_mongo_uri(uri: str) -> str:
     -----------------------
     Removes any whitespace and validates the URI format.
     pymongo is strict about URI format, so we clean it up.
+    
+    Common issues fixed:
+    - Extra quotes from environment variables
+    - Leading/trailing whitespace
+    - Newlines or special characters
     """
     if not uri:
         return uri
-    # Remove leading/trailing whitespace
-    uri = uri.strip()
-    # Remove any quotes that might have been added
-    if uri.startswith('"') and uri.endswith('"'):
-        uri = uri[1:-1]
-    if uri.startswith("'") and uri.endswith("'"):
-        uri = uri[1:-1]
+    
+    # Remove leading/trailing whitespace and newlines
+    uri = uri.strip().replace('\n', '').replace('\r', '')
+    
+    # Remove any quotes that might have been added by Render/environment
+    while (uri.startswith('"') and uri.endswith('"')) or (uri.startswith("'") and uri.endswith("'")):
+        uri = uri[1:-1].strip()
+    
+    # Ensure URI starts with mongodb:// or mongodb+srv://
+    if not (uri.startswith("mongodb://") or uri.startswith("mongodb+srv://")):
+        raise ValueError(f"Invalid MongoDB URI format: must start with mongodb:// or mongodb+srv://")
+    
     return uri
 
 try:
@@ -443,7 +453,9 @@ try:
     print("✅ RAG Checkpointer: Connected to MongoDB")
 except Exception as e:
     print(f"⚠️ RAG Checkpointer: MongoDB connection failed: {e}")
-    print(f"   URI used: {MONGO_URI[:50]}..." if len(MONGO_URI) > 50 else f"   URI used: {MONGO_URI}")
+    print(f"   Raw URI from env: {MONGO_URI[:80]}..." if len(MONGO_URI) > 80 else f"   Raw URI from env: {MONGO_URI}")
+    print(f"   URI length: {len(MONGO_URI)} characters")
+    print(f"   Check Render Dashboard → Environment → MONGO_URI or MONGODB_URI")
     _rag_checkpoints = None
 
 

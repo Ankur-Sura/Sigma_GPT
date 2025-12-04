@@ -627,16 +627,26 @@ def _sanitize_mongo_uri(uri: str) -> str:
     -----------------------
     Removes any whitespace and validates the URI format.
     pymongo is strict about URI format, so we clean it up.
+    
+    Common issues fixed:
+    - Extra quotes from environment variables
+    - Leading/trailing whitespace
+    - Newlines or special characters
     """
     if not uri:
         return uri
-    # Remove leading/trailing whitespace
-    uri = uri.strip()
-    # Remove any quotes that might have been added
-    if uri.startswith('"') and uri.endswith('"'):
-        uri = uri[1:-1]
-    if uri.startswith("'") and uri.endswith("'"):
-        uri = uri[1:-1]
+    
+    # Remove leading/trailing whitespace and newlines
+    uri = uri.strip().replace('\n', '').replace('\r', '')
+    
+    # Remove any quotes that might have been added by Render/environment
+    while (uri.startswith('"') and uri.endswith('"')) or (uri.startswith("'") and uri.endswith("'")):
+        uri = uri[1:-1].strip()
+    
+    # Ensure URI starts with mongodb:// or mongodb+srv://
+    if not (uri.startswith("mongodb://") or uri.startswith("mongodb+srv://")):
+        raise ValueError(f"Invalid MongoDB URI format: must start with mongodb:// or mongodb+srv://")
+    
     return uri
 
 
@@ -671,7 +681,9 @@ def _get_mongo_collection():
             print(f"✅ Connected to MongoDB checkpointer: {MONGODB_DB}.{MONGODB_COLLECTION}")
         except Exception as e:
             print(f"⚠️ MongoDB checkpointer not available: {e}")
-            print(f"   URI used: {MONGODB_URI[:50]}..." if len(MONGODB_URI) > 50 else f"   URI used: {MONGODB_URI}")
+            print(f"   Raw URI from env: {MONGODB_URI[:80]}..." if len(MONGODB_URI) > 80 else f"   Raw URI from env: {MONGODB_URI}")
+            print(f"   URI length: {len(MONGODB_URI)} characters")
+            print(f"   Check Render Dashboard → Environment → MONGODB_URI")
             return None
     
     return _checkpoints_collection
@@ -703,7 +715,9 @@ def _get_global_memory_collection():
             print(f"✅ Connected to Global Memory: {MONGODB_DB}.{MONGODB_GLOBAL_MEMORY_COLLECTION}")
         except Exception as e:
             print(f"⚠️ Global memory not available: {e}")
-            print(f"   URI used: {MONGODB_URI[:50]}..." if len(MONGODB_URI) > 50 else f"   URI used: {MONGODB_URI}")
+            print(f"   Raw URI from env: {MONGODB_URI[:80]}..." if len(MONGODB_URI) > 80 else f"   Raw URI from env: {MONGODB_URI}")
+            print(f"   URI length: {len(MONGODB_URI)} characters")
+            print(f"   Check Render Dashboard → Environment → MONGODB_URI")
             return None
     
     return _global_memory_collection
