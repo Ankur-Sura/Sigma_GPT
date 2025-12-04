@@ -124,6 +124,8 @@
     align-items: center;
     padding: 1rem 0.5rem 0.5rem; /* position the header nicely */
     position: relative;
+    gap: 12px; /* 🆕 Space between elements */
+    flex-wrap: nowrap; /* 🆕 Prevent wrapping */
 }
 
 /* 🆕 Mobile Menu Button */
@@ -139,6 +141,9 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    flex-shrink: 0; /* 🆕 Don't shrink */
+    position: relative; /* 🆕 Ensure proper positioning */
+    z-index: 10; /* 🆕 Above other elements */
 }
 
 .mobile-menu-btn:hover {
@@ -150,13 +155,30 @@
 @media (max-width: 767px) {
     .mobile-menu-btn {
         display: flex;
+        order: -1; /* 🆕 Show first (left side) */
+    }
+    
+    .navbar {
+        padding: 0.75rem 0.5rem 0.5rem;
+        gap: 8px; /* 🆕 Smaller gap on mobile */
+    }
+    
+    .navbar span {
+        margin: 0;
+        font-size: 0.9rem;
+        text-align: center;
     }
 }
 
 .navbar span {
-    margin: 0 1rem;
+    margin: 0;
     font-weight: 700; /* brand emphasis */
     letter-spacing: 0.5px; /* slight spacing */
+    flex: 1; /* 🆕 Take remaining space */
+    text-align: center; /* 🆕 Center the text */
+    white-space: nowrap; /* 🆕 Prevent text wrapping */
+    overflow: hidden; /* 🆕 Prevent overflow */
+    text-overflow: ellipsis; /* 🆕 Show ellipsis if too long */
 }
 
 .userIconDiv {
