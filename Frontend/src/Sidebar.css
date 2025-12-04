@@ -113,10 +113,11 @@
 
 .history {
     margin: 6px 10px; /* tighter margin to reduce surrounding gap */
-    padding: 8px; /* reduce internal padding to shrink top/bottom gap */
+    padding: 8px 8px 8px 12px; /* extra left padding for border visibility */
     width: calc(100% - 20px); /* align list width with padding */
     flex: 1 1 auto; /* fill available vertical space */
     overflow-y: auto; /* scroll thread list */
+    overflow-x: visible; /* don't clip left border */
     border-radius: 12px; /* rounded container */
     background: rgba(255, 255, 255, 0.03); /* subtle fill */
     border: 1px solid var(--border); /* outline history area */
@@ -125,18 +126,19 @@
 .history li {
     list-style-type: none;
     cursor: pointer;
-    padding: 8px 10px; /* 🆕 Slightly more padding for better spacing */
+    padding: 8px 10px 8px 12px; /* extra left padding for border */
     margin-bottom: 0.45rem; /* smaller gap between items */
+    margin-left: 2px; /* ensure left border is visible */
     font-size: 14px; /* history text size */
-    padding-right: 80px; /* 🆕 Space for edit and delete icons */
+    padding-right: 80px; /* Space for edit and delete icons */
     position: relative;
     border-radius: 10px; /* rounded item */
     color: var(--text); /* item text */
     transition: all 0.2s ease; /* smooth transitions */
     border-left: 3px solid transparent; /* space for hover indicator */
-    min-height: 36px; /* 🆕 Ensure consistent height for icon alignment */
+    min-height: 36px; /* Ensure consistent height for icon alignment */
     display: flex;
-    align-items: center; /* 🆕 Vertically center content */
+    align-items: center; /* Vertically center content */
 }
 
 .historyTitle {
